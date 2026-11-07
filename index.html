@@ -41,6 +41,7 @@ details{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 
 summary{cursor:pointer;font-weight:600}
 #refimg{max-width:100%;display:none;margin-top:8px;border:1px solid #e2e8f0}
 #summary{display:none;margin:12px 0;padding:16px;border-radius:10px;background:#eff6ff;border:2px solid #2563eb}
+.tr{display:flex;gap:10px;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9}.tr span{flex:1}
 textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
 </style>
 </head>
@@ -55,6 +56,7 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
 <main>
   <div class="bar">
     <label>Load score <input type="file" id="file" accept=".musicxml,.xml,.mxl"></label>
+    <label>Saved <select id="saved"><option value="">Your saved songs…</option></select></label>
     <label>Demo <select id="demo"><option value="jingle">Jingle Bells (Alfred's p.30)</option><option value="ode">Ode to Joy (hands together)</option><option value="chords">Chords I–IV–V–I</option></select></label>
     <label>Hands <select id="hands"><option value="both">Both</option><option value="right">Right only</option><option value="left">Left only</option></select></label>
     <label>Measures <input type="number" id="mFrom" min="1" value="1"> to <input type="number" id="mTo" min="1" value="1"></label>
@@ -72,6 +74,15 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
   <svg id="kb" viewBox="0 0 800 120"></svg>
   </div>
 
+  <details id="prog" open>
+    <summary>My progress &amp; trouble spots</summary>
+    <div id="progBody" style="margin-top:8px"></div>
+    <details style="margin-top:8px"><summary>Back up / move progress</summary>
+      <p style="font-size:13px">Progress is saved in this browser on this device. Export it to keep a backup or move it to another device (paste it into Import there).</p>
+      <textarea id="xfer" placeholder="Exported progress appears here; paste here to import"></textarea><br>
+      <button id="btnExport">Export</button> <button id="btnImport">Import</button>
+    </details>
+  </details>
   <details>
     <summary>Reference image (paste a screenshot to compare against the rendered score)</summary>
     <p>Click here and paste (Ctrl/⌘+V) a screenshot, or choose a file: <input type="file" id="imgFile" accept="image/*"></p>
@@ -312,7 +323,7 @@ function renderScore(){
     let x=L+s.pre;
     s.ms.forEach((mi,k)=>{
       const m=sc.measures[mi];const mw=m.width*s.scale;
-      const nm=el('text',{x:x+3,y:s.tb-46,'font-size':11,fill:'#94a3b8'},svg);nm.textContent=mi+1;
+      const nm=el('text',{x:x+3,y:s.tb-46,'font-size':12,fill:'#94a3b8'},svg);nm.textContent=mi+1;m.nmEl=nm;
       let cx=x+12*s.scale;
       m.cols.forEach(c=>{c.x=cx+ (c.w*s.scale)/2-4;cx+=c.w*s.scale;});
       m.cols.forEach(c=>drawColumn(svg,s,sc,mi,c,placed));
@@ -330,6 +341,7 @@ function renderScore(){
     el('path',{d:`M${n.x} ${y} Q${(n.x+x2)/2} ${y+10} ${x2} ${y}`,stroke:'#555',fill:'none','stroke-width':1.3},svg);
   });
   svg.appendChild(S.ghostG=el('g',{},svg));
+  markMeasures();
 }
 
 function drawColumn(svg,sys,sc,mi,col,placed){
@@ -383,7 +395,7 @@ function drawColumn(svg,sys,sc,mi,col,placed){
 
 // ---------- practice engine ----------
 function buildSteps(ov){
-  ov=ov||{};
+  ov=ov||{};S.drillRun=ov.from!==undefined;
   if(!ov.keep)S.sp={phase:'full',queue:[],streak:0,fixed:[],fullRuns:0};
   const sc=S.score,hand=$('hands').value;
   let from=Math.max(1,+$('mFrom').value||1)-1,to=Math.min(sc.measures.length,+$('mTo').value||sc.measures.length)-1;
@@ -466,13 +478,14 @@ function noteOn(m){
   refreshAll();
 }
 function advance(){
+  noteMeasureProgress(S.steps[S.idx]);
   S.idx++;S.hit=new Set();
   const tm=timingOf(S.steps[S.idx-1]);
   if(S.idx>=S.steps.length){finish();}else say('✓'+tm,'good');
   refreshAll();
 }
 function finish(){
-  S.finished=true;metStop();
+  S.finished=true;metStop();if(!S.drillRun)recordSession();
   if($('sp').checked&&spAfterRun())return;
   const total=S.steps.length,clean=S.steps.filter(s=>!s.errs).length;
   const byM={};S.steps.forEach(s=>{if(s.errs)byM[s.measure]=(byM[s.measure]||0)+s.errs;});
@@ -671,22 +684,94 @@ function refreshInputs(){
 
 $('btnMidi').onclick=connectMidi;
 
+
+// ---------- saved progress (localStorage) ----------
+const STORE_KEY='pianoTutor.v1';
+let DB={songs:{},last:null},dbOk=true;
+function dbLoad(){try{const j=localStorage.getItem(STORE_KEY);if(j){const o=JSON.parse(j);DB={songs:o.songs||{},last:o.last||null};}}catch(e){dbOk=false;}}
+function dbSave(){try{localStorage.setItem(STORE_KEY,JSON.stringify({songs:DB.songs,last:DB.last}));return true;}catch(e){dbOk=false;return false;}}
+function hashStr(str){let h=5381;for(let i=0;i<str.length;i++)h=((h<<5)+h+str.charCodeAt(i))|0;return (h>>>0).toString(36);}
+const songRec=()=>DB.songs[S.songId];
+function recordMeasure(mi,clean){
+  const r=songRec();if(!r)return;
+  const m=r.measures[mi]||(r.measures[mi]={plays:0,bad:0,recent:[]});
+  m.plays++;if(!clean)m.bad++;m.recent=m.recent.concat(clean?1:0).slice(-5);
+  r.updated=Date.now();dbSave();markMeasures();updateProgressUI();
+}
+function noteMeasureProgress(st){
+  if(!st)return;const ms=S.steps.filter(x=>x.measure===st.measure);
+  if(ms[ms.length-1]!==st)return;recordMeasure(st.measure,ms.every(x=>!x.errs));
+}
+function recordSession(){
+  const r=songRec();if(!r||!S.steps.length)return;
+  const clean=S.steps.filter(x=>!x.errs).length;
+  r.sessions=(r.sessions||[]).concat({ts:Date.now(),pct:Math.round(100*clean/S.steps.length)}).slice(-50);
+  r.updated=Date.now();dbSave();updateProgressUI();
+}
+function troubleList(){
+  const r=S&&songRec();if(!r)return [];
+  return Object.keys(r.measures).map(Number).filter(mi=>r.measures[mi].recent.filter(x=>x===0).length>=2).sort((a,b)=>a-b);
+}
+function markMeasures(){
+  if(!S||!S.score)return;const ch=new Set(troubleList());
+  S.score.measures.forEach((m,i)=>{if(!m.nmEl)return;const c=ch.has(i);
+    m.nmEl.setAttribute('fill',c?'#ea580c':'#94a3b8');m.nmEl.setAttribute('font-weight',c?'700':'400');m.nmEl.textContent=(i+1)+(c?' ⚠':'');});
+}
+function updateProgressUI(){
+  const box=$('progBody');if(!box||!S)return;const r=songRec();
+  if(!dbOk){box.innerHTML='<p>⚠ This browser isn\'t letting the page save data, so progress won\'t be kept.</p>';return;}
+  const tl=troubleList(),ss=(r&&r.sessions)||[];
+  let h=`<div><b>${S.score.title}</b> — ${ss.length} full run${ss.length===1?'':'s'} saved`+
+    (ss.length?`; last: ${new Date(ss[ss.length-1].ts).toLocaleDateString()}; recent scores: ${ss.slice(-5).map(x=>x.pct+'%').join(', ')}`:'')+'</div>';
+  if(tl.length){
+    h+='<p style="margin:8px 0 4px"><b>Trouble spots</b> (missed in 2+ of your last 5 plays):</p>';
+    tl.forEach(mi=>{const m=r.measures[mi],miss=m.recent.filter(x=>x===0).length;
+      h+=`<div class="tr"><span>Measure ${mi+1} — missed in ${miss} of last ${m.recent.length} plays</span><button data-act="one" data-m="${mi}">Practise</button></div>`;});
+    h+='<p><button class="primary" data-act="all">Drill all trouble spots, then the full song</button></p>';
+  }else h+='<p style="margin:8px 0">No trouble spots yet — they appear here once you miss the same measure more than once.</p>';
+  h+='<p><button data-act="reset">Reset this song\'s progress</button></p>';
+  box.innerHTML=h;
+}
+function practiseTrouble(list){
+  list=list.slice();if(!list.length||!S)return;
+  $('sp').checked=true;S.sp={phase:'drill',queue:list,streak:0,fixed:list.map(m=>m+1),fullRuns:0};
+  while(list.length){buildSteps({keep:true,from:list[0],to:list[0]});if(S.steps.length)break;list.shift();}
+  if(!list.length){say('Nothing to practise for those measures with the current hand setting.','bad');return;}
+  say(`Drilling your trouble spots, starting with measure ${list[0]+1}.`);
+}
+$('progBody').onclick=e=>{
+  const b=e.target.closest('button');if(!b||!S)return;
+  if(b.dataset.act==='one')practiseTrouble([+b.dataset.m]);
+  else if(b.dataset.act==='all')practiseTrouble(troubleList());
+  else if(b.dataset.act==='reset'&&confirm('Reset saved progress for this song?')){const r=songRec();r.measures={};r.sessions=[];dbSave();markMeasures();updateProgressUI();}
+};
+function refreshSavedSelect(){
+  const sel=$('saved');sel.innerHTML='<option value="">Your saved songs…</option>'+
+    Object.entries(DB.songs).filter(([id,r])=>r.xml).map(([id,r])=>`<option value="${id}">${r.title}</option>`).join('');
+  sel.value=S&&DB.songs[S.songId]&&DB.songs[S.songId].xml?S.songId:'';
+}
+$('saved').onchange=()=>{const id=$('saved').value;if(id&&DB.songs[id]&&DB.songs[id].xml)loadXml(DB.songs[id].xml,id);};
+$('btnExport').onclick=()=>{const t=$('xfer');t.value=JSON.stringify({songs:DB.songs,last:DB.last});t.select();try{navigator.clipboard.writeText(t.value);}catch(e){}};
+$('btnImport').onclick=()=>{try{const o=JSON.parse($('xfer').value);Object.assign(DB.songs,o.songs||{});dbSave();refreshSavedSelect();updateProgressUI();markMeasures();say('Progress imported.','good');}catch(e){say('⚠ Could not read that progress data.','bad');}};
+
 // ---------- loading ----------
-function loadXml(text){
+function loadXml(text,id){
   try{
-    const sc=parseScore(text);S={score:sc};
+    const sc=parseScore(text);id=id||('xml:'+hashStr(text));S={score:sc,songId:id};
+    const rec=DB.songs[id]||(DB.songs[id]={title:sc.title,measures:{},sessions:[],updated:Date.now()});
+    rec.title=sc.title;if(!id.startsWith('demo:'))rec.xml=text;DB.last=id;dbSave();
     $('mFrom').value=1;$('mTo').value=sc.measures.length;$('mTo').max=sc.measures.length;
-    renderScore();buildKeyboard();buildSteps();
+    renderScore();buildKeyboard();buildSteps();refreshSavedSelect();updateProgressUI();
     say(`Loaded “${sc.title}” — ${sc.measures.length} measures. Press the highlighted note.`);
   }catch(e){say('⚠ '+e.message,'bad');console.error(e);}
 }
 $('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;
   try{loadXml(/\.mxl$/i.test(f.name)?await unzipMxl(await f.arrayBuffer()):await f.text());}catch(err){say('⚠ '+err.message,'bad');}};
-$('demo').onchange=()=>loadXml(DEMOS[$('demo').value]());
+$('demo').onchange=()=>loadXml(DEMOS[$('demo').value](),'demo:'+$('demo').value);
 $('btnXml').onclick=()=>loadXml($('xmlText').value);
 $('btnRestart').onclick=()=>S&&buildSteps();
 $('btnBack').onclick=()=>{if(S&&S.idx>0){S.idx--;S.hit=new Set();$('summary').style.display='none';refreshAll();}};
-$('btnSkip').onclick=()=>{if(S&&cur()){cur().errs++;S.idx++;S.hit=new Set();if(S.idx>=S.steps.length)finish();refreshAll();}};
+$('btnSkip').onclick=()=>{if(S&&cur()){cur().errs++;noteMeasureProgress(cur());S.idx++;S.hit=new Set();if(S.idx>=S.steps.length)finish();refreshAll();}};
 ['hands','mFrom','mTo'].forEach(id=>$(id).onchange=()=>S&&buildSteps());
 // reference image
 function showImg(blob){const i=$('refimg');i.src=URL.createObjectURL(blob);i.style.display='block';}
@@ -694,7 +779,11 @@ $('imgFile').onchange=e=>e.target.files[0]&&showImg(e.target.files[0]);
 addEventListener('paste',e=>{const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));if(it){showImg(it.getAsFile());document.querySelector('details').open=true;}});
 addEventListener('pointerdown',()=>{try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();}catch(e){}},{once:true});
 addEventListener('resize',()=>{if(S)moveCursor();});
-loadXml(DEMOS.jingle());
+dbLoad();
+(()=>{const l=DB.last;
+  if(l&&l.startsWith('demo:')&&DEMOS[l.slice(5)]){$('demo').value=l.slice(5);loadXml(DEMOS[l.slice(5)](),l);}
+  else if(l&&DB.songs[l]&&DB.songs[l].xml)loadXml(DB.songs[l].xml,l);
+  else loadXml(DEMOS.jingle(),'demo:jingle');})();
 </script>
 </body>
 </html>
