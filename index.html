@@ -61,12 +61,12 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
     <label>Saved <select id="saved"><option value="">Your saved songs…</option></select></label>
     <label>Demo <select id="demo"><option value="jingle">Jingle Bells (Alfred's p.30)</option><option value="ode">Ode to Joy (hands together)</option><option value="chords">Chords I–IV–V–I</option></select></label>
     <span id="handBtns" style="display:inline-flex;gap:0;align-items:center"><b style="font-size:13px;color:#475569;margin-right:6px">Hands</b><button data-h="both">Both</button><button data-h="right">Right</button><button data-h="left">Left</button></span>
-    <label><input type="checkbox" id="seq"> Guided: right → left → both</label>
+    <label><input type="checkbox" id="seq"> Guided: right → left → both, repeating any bar with a mistake</label>
     <label style="display:none">Hands <select id="hands"><option value="both">Both</option><option value="right">Right only</option><option value="left">Left only</option></select></label>
     <label>Measures <input type="number" id="mFrom" min="1" value="1"> to <input type="number" id="mTo" min="1" value="1"></label>
     <label><input type="checkbox" id="names"> Show note names</label>
     <label><input type="checkbox" id="showKb" checked> Show keyboard</label>
-    <label><input type="checkbox" id="sp"> Smart practice</label><label>clean runs needed <input type="number" id="spNeed" min="1" max="5" value="2"></label>
+    <label><input type="checkbox" id="sp"> Smart practice</label><label>clean runs needed <input type="number" id="spNeed" min="1" max="10" value="5"></label>
     <label><input type="checkbox" id="met"> Metronome</label><label>BPM <input type="number" id="bpm" min="30" max="200" value="60"></label>
     <button id="btnRestart" class="primary">Restart</button>
     <button id="btnBack">◀ Back</button><button id="btnSkip">Skip ▶</button>
@@ -411,8 +411,9 @@ function fitScoreWrap(){
 }
 
 // ---------- practice engine ----------
+const bad=st=>st.errs>0||!!st.hadErr;
 function buildSteps(ov){
-  ov=ov||{};S.drillRun=ov.from!==undefined;
+  ov=ov||{};S.drillRun=ov.from!==undefined;S.loop=null;
   if(!ov.keep)S.sp={phase:'full',queue:[],streak:0,fixed:[],fullRuns:0};
   const sc=S.score,hand=$('hands').value;
   let from=Math.max(1,+$('mFrom').value||1)-1,to=Math.min(sc.measures.length,+$('mTo').value||sc.measures.length)-1;
@@ -440,7 +441,7 @@ function refreshStyles(){
     if(!n.inRange)c+=' dim';
     else if(n.tieStop)c+=' tied';
     else{const st=n.step,i=S.steps.indexOf(st);
-      if(st&&i<S.idx)c+=st.errs?' err':' ok';
+      if(st&&i<S.idx)c+=bad(st)?' err':' ok';
       else if(st===cur())c+=S.hit.has(n.midi)?' ok':' cur';}
     n.el.setAttribute('class',c);
     if(n.stemEl)n.stemEl.setAttribute('class','stem'+(n.inRange?'':' dim'));
@@ -461,7 +462,7 @@ function refreshNext(){
     ` <small style="color:#64748b">measure ${st.measure+1}</small>`;
 }
 function refreshStats(){
-  const done=S.steps.slice(0,S.idx),clean=done.filter(s=>!s.errs).length;
+  const done=S.steps.slice(0,S.idx),clean=done.filter(s=>!bad(s)).length;
   $('stats').textContent=`Step ${Math.min(S.idx+1,S.steps.length)}/${S.steps.length} · clean ${clean}/${done.length} · wrong notes ${S.errTotal}`;
   $('spInfo').textContent=spInfo();
 }
@@ -495,8 +496,9 @@ function noteOn(m){
   refreshAll();
 }
 function advance(){
-  noteMeasureProgress(S.steps[S.idx]);
+  const done=S.steps[S.idx];noteMeasureProgress(done);
   S.idx++;S.hit=new Set();
+  if(guidedLoop(done)){refreshAll();return;}
   const tm=timingOf(S.steps[S.idx-1]);
   if(S.idx>=S.steps.length){finish();}else say('✓'+tm,'good');
   refreshAll();
@@ -507,8 +509,8 @@ function finish(){
   if($('seq').checked&&!S.drillRun){const h=$('hands').value;
     if(h==='right'||h==='left'){const nxt=h==='right'?'left':'both';setHands(nxt);
       say(h==='right'?'✓ Right hand done — now the left hand.':'✓ Left hand done — now both hands together.','good');return;}}
-  const total=S.steps.length,clean=S.steps.filter(s=>!s.errs).length;
-  const byM={};S.steps.forEach(s=>{if(s.errs)byM[s.measure]=(byM[s.measure]||0)+s.errs;});
+  const total=S.steps.length,clean=S.steps.filter(s=>!bad(s)).length;
+  const byM={};S.steps.forEach(s=>{if(bad(s))byM[s.measure]=(byM[s.measure]||0)+s.errs+(s.hadErr?1:0);});
   const worst=Object.entries(byM).sort((a,b)=>b[1]-a[1]);
   const box=$('summary');box.style.display='block';
   box.innerHTML=`<h3 style="margin:0 0 6px">Finished! ${clean}/${total} steps played cleanly (${Math.round(100*clean/Math.max(1,total))}%)</h3>`+
@@ -517,9 +519,32 @@ function finish(){
   const bw=$('btnWorst');if(bw)bw.onclick=()=>{$('mFrom').value=$('mTo').value=+worst[0][0]+1;buildSteps();};
   say('🎉 Done!','good');
 }
+// ---------- guided mode: repeat a bar with a mistake until it is solid ----------
+function guidedLoop(st){ // call after S.idx++; returns true if it moved back to repeat the bar
+  if(!$('seq').checked||S.drillRun||!st)return false;
+  const ms=S.steps.filter(x=>x.measure===st.measure);
+  if(ms[ms.length-1]!==st)return false;
+  const clean=ms.every(x=>!x.errs),need=spNeed();
+  const start=()=>{S.idx=S.steps.indexOf(ms[0]);S.hit=new Set();ms.forEach(x=>{if(x.errs)x.hadErr=true;x.errs=0;});metStart(S.idx);};
+  if(S.loop&&S.loop.measure===st.measure){
+    S.loop.streak=clean?S.loop.streak+1:0;
+    if(S.loop.streak>=need){S.loop=null;say(`✓ Bar ${st.measure+1} is solid — carrying on.`,'good');return false;}
+    start();
+    say(clean?`✓ Clean ${S.loop.streak}/${need} — again.`:`✗ Not clean — count reset to 0/${need}. Again.`,clean?'good':'bad');
+    return true;
+  }
+  if(!clean){
+    S.loop={measure:st.measure,streak:0};start();
+    say(`Mistake in bar ${st.measure+1} — let's repeat it until you get ${need} clean runs in a row.`,'bad');
+    return true;
+  }
+  return false;
+}
+
 // ---------- smart practice: drill trouble measures, then back to the full song ----------
 const spNeed=()=>Math.max(1,+$('spNeed').value||2);
 function spInfo(){
+  if(S&&S.loop)return `🔁 Repeating bar ${S.loop.measure+1}: clean runs in a row ${S.loop.streak}/${spNeed()}. A mistake resets the count.`;
   if(!$('sp').checked||!S||!S.sp)return '';
   const sp=S.sp;
   if(sp.phase==='drill')return `🎯 Drilling measure ${sp.queue[0]+1}: clean runs in a row ${sp.streak}/${spNeed()}. Trouble measures left: ${sp.queue.map(m=>m+1).join(', ')}. Then back to the full song.`;
@@ -532,7 +557,7 @@ function spSummary(){
 function spAfterRun(){ // true = more practice queued, false = show the normal summary
   if(!S.sp)S.sp={phase:'full',queue:[],streak:0,fixed:[],fullRuns:0};
   const sp=S.sp,byM={};
-  S.steps.forEach(st=>{if(st.errs)byM[st.measure]=1;});
+  S.steps.forEach(st=>{if(bad(st))byM[st.measure]=1;});
   const bad=Object.keys(byM).map(Number).sort((a,b)=>a-b);
   if(sp.phase==='full'){
     sp.fullRuns++;
@@ -578,15 +603,15 @@ const met={on:false};
 const spbOf=()=>60/(+$('bpm').value||60);
 const clockOf=q=>met.t0+(q-met.first)*met.spb;
 function metStop(){clearInterval(met.timer);met.on=false;$('beat').textContent='';}
-function metStart(){
-  metStop();
+function metStart(fromIdx){
+  metStop();fromIdx=typeof fromIdx==='number'?fromIdx:0;
   if(!$('met').checked||!S||!S.steps||!S.steps.length)return;
   ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();
-  const first=S.steps[0],m0=S.score.measures[first.measure];
+  const first=S.steps[fromIdx],m0=S.score.measures[first.measure];
   met.spb=spbOf();met.bpb=Math.max(1,parseInt(m0.beats)||4);met.first=first.t;met.Q0=m0.startQ;
   met.t0=ac.currentTime+.4-(met.Q0-met.bpb-met.first)*met.spb;
   met.k=-met.bpb;met.on=true;
-  S.steps.forEach(s=>s.timing=null);
+  S.steps.slice(fromIdx).forEach(s=>s.timing=null);
   met.timer=setInterval(metTick,25);
   say('Metronome on — count-in of '+met.bpb+' beats, then play with the clicks.');
 }
@@ -724,7 +749,7 @@ function noteMeasureProgress(st){
 }
 function recordSession(){
   const r=songRec();if(!r||!S.steps.length)return;
-  const clean=S.steps.filter(x=>!x.errs).length;
+  const clean=S.steps.filter(x=>!bad(x)).length;
   r.sessions=(r.sessions||[]).concat({ts:Date.now(),pct:Math.round(100*clean/S.steps.length)}).slice(-50);
   r.updated=Date.now();dbSave();updateProgressUI();
 }
@@ -789,7 +814,7 @@ function syncHandBtns(){document.querySelectorAll('#handBtns button').forEach(b=
 function setHands(v){$('hands').value=v;syncHandBtns();if(S)buildSteps();}
 document.querySelectorAll('#handBtns button').forEach(b=>b.onclick=()=>{setHands(b.dataset.h);
   if(S)say(b.dataset.h==='both'?'Both hands.':`${b.dataset.h==='right'?'Right':'Left'} hand only — the other hand is greyed out.`);});
-$('seq').onchange=()=>{if(!S)return;if($('seq').checked){setHands('right');say('Guided practice: right hand first, then left, then both together.');}};
+$('seq').onchange=()=>{if(!S)return;if($('seq').checked){setHands('right');say('Guided practice: right hand first, then left, then both. Any bar with a mistake repeats until you play it cleanly '+spNeed()+' times in a row.');}};
 syncHandBtns();
 
 // ---------- loading ----------
@@ -808,8 +833,8 @@ $('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;
 $('demo').onchange=()=>loadXml(DEMOS[$('demo').value](),'demo:'+$('demo').value);
 $('btnXml').onclick=()=>loadXml($('xmlText').value);
 $('btnRestart').onclick=()=>S&&buildSteps();
-$('btnBack').onclick=()=>{if(S&&S.idx>0){S.idx--;S.hit=new Set();$('summary').style.display='none';refreshAll();}};
-$('btnSkip').onclick=()=>{if(S&&cur()){cur().errs++;noteMeasureProgress(cur());S.idx++;S.hit=new Set();if(S.idx>=S.steps.length)finish();refreshAll();}};
+$('btnBack').onclick=()=>{if(S&&S.idx>0){S.loop=null;S.idx--;S.hit=new Set();$('summary').style.display='none';refreshAll();}};
+$('btnSkip').onclick=()=>{if(S&&cur()){cur().errs++;noteMeasureProgress(cur());const sk=cur();S.idx++;S.hit=new Set();if(guidedLoop(sk)){refreshAll();return;}if(S.idx>=S.steps.length)finish();refreshAll();}};
 ['hands','mFrom','mTo'].forEach(id=>$(id).onchange=()=>S&&buildSteps());
 // reference image
 function showImg(blob){const i=$('refimg');i.src=URL.createObjectURL(blob);i.style.display='block';}
