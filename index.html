@@ -41,6 +41,7 @@ details{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 
 summary{cursor:pointer;font-weight:600}
 #refimg{max-width:100%;display:none;margin-top:8px;border:1px solid #e2e8f0}
 #summary{display:none;margin:12px 0;padding:16px;border-radius:10px;background:#eff6ff;border:2px solid #2563eb}
+#handBtns button{border-radius:0;margin:0 -1px 0 0}#handBtns button:nth-of-type(1){border-radius:8px 0 0 8px}#handBtns button:last-child{border-radius:0 8px 8px 0}#handBtns button.on{background:#2563eb;color:#fff;border-color:#2563eb}
 .tr{display:flex;gap:10px;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9}.tr span{flex:1}
 textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
 </style>
@@ -58,7 +59,9 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
     <label>Load score <input type="file" id="file" accept=".musicxml,.xml,.mxl"></label>
     <label>Saved <select id="saved"><option value="">Your saved songs…</option></select></label>
     <label>Demo <select id="demo"><option value="jingle">Jingle Bells (Alfred's p.30)</option><option value="ode">Ode to Joy (hands together)</option><option value="chords">Chords I–IV–V–I</option></select></label>
-    <label>Hands <select id="hands"><option value="both">Both</option><option value="right">Right only</option><option value="left">Left only</option></select></label>
+    <span id="handBtns" style="display:inline-flex;gap:0;align-items:center"><b style="font-size:13px;color:#475569;margin-right:6px">Hands</b><button data-h="both">Both</button><button data-h="right">Right</button><button data-h="left">Left</button></span>
+    <label><input type="checkbox" id="seq"> Guided: right → left → both</label>
+    <label style="display:none">Hands <select id="hands"><option value="both">Both</option><option value="right">Right only</option><option value="left">Left only</option></select></label>
     <label>Measures <input type="number" id="mFrom" min="1" value="1"> to <input type="number" id="mTo" min="1" value="1"></label>
     <label><input type="checkbox" id="sp"> Smart practice</label><label>clean runs needed <input type="number" id="spNeed" min="1" max="5" value="2"></label>
     <label><input type="checkbox" id="met"> Metronome</label><label>BPM <input type="number" id="bpm" min="30" max="200" value="60"></label>
@@ -487,6 +490,9 @@ function advance(){
 function finish(){
   S.finished=true;metStop();if(!S.drillRun)recordSession();
   if($('sp').checked&&spAfterRun())return;
+  if($('seq').checked&&!S.drillRun){const h=$('hands').value;
+    if(h==='right'||h==='left'){const nxt=h==='right'?'left':'both';setHands(nxt);
+      say(h==='right'?'✓ Right hand done — now the left hand.':'✓ Left hand done — now both hands together.','good');return;}}
   const total=S.steps.length,clean=S.steps.filter(s=>!s.errs).length;
   const byM={};S.steps.forEach(s=>{if(s.errs)byM[s.measure]=(byM[s.measure]||0)+s.errs;});
   const worst=Object.entries(byM).sort((a,b)=>b[1]-a[1]);
@@ -753,6 +759,14 @@ function refreshSavedSelect(){
 $('saved').onchange=()=>{const id=$('saved').value;if(id&&DB.songs[id]&&DB.songs[id].xml)loadXml(DB.songs[id].xml,id);};
 $('btnExport').onclick=()=>{const t=$('xfer');t.value=JSON.stringify({songs:DB.songs,last:DB.last});t.select();try{navigator.clipboard.writeText(t.value);}catch(e){}};
 $('btnImport').onclick=()=>{try{const o=JSON.parse($('xfer').value);Object.assign(DB.songs,o.songs||{});dbSave();refreshSavedSelect();updateProgressUI();markMeasures();say('Progress imported.','good');}catch(e){say('⚠ Could not read that progress data.','bad');}};
+
+// ---------- hand selection ----------
+function syncHandBtns(){document.querySelectorAll('#handBtns button').forEach(b=>b.classList.toggle('on',b.dataset.h===$('hands').value));}
+function setHands(v){$('hands').value=v;syncHandBtns();if(S)buildSteps();}
+document.querySelectorAll('#handBtns button').forEach(b=>b.onclick=()=>{setHands(b.dataset.h);
+  if(S)say(b.dataset.h==='both'?'Both hands.':`${b.dataset.h==='right'?'Right':'Left'} hand only — the other hand is greyed out.`);});
+$('seq').onchange=()=>{if(!S)return;if($('seq').checked){setHands('right');say('Guided practice: right hand first, then left, then both together.');}};
+syncHandBtns();
 
 // ---------- loading ----------
 function loadXml(text,id){
