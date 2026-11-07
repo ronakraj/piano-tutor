@@ -9,8 +9,8 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
 button,select,input,label,summary{touch-action:manipulation}
-@media (pointer:coarse){button,select,input[type=number]{min-height:44px;font-size:16px}input[type=checkbox]{width:22px;height:22px}.bar{gap:12px}#scoreWrap{max-height:52vh!important}#msg{font-size:20px}}
-#dock{position:sticky;bottom:0;background:#f4f5f7;padding:6px 0 max(6px,env(safe-area-inset-bottom));z-index:5}
+@media (pointer:coarse){button,select,input[type=number]{min-height:44px;font-size:16px}input[type=checkbox]{width:22px;height:22px}.bar{gap:12px}#msg{font-size:20px}}
+#dock{background:#f4f5f7;padding:6px 0}
 #dock #feedback{margin:0 0 8px;min-height:0}
 body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f4f5f7;color:#1f2937}
 header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 16px;background:#1f2937;color:#fff}
@@ -24,7 +24,7 @@ main{max-width:1100px;margin:0 auto;padding:12px 16px}
 .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:10px}
 .bar label{font-size:13px;color:#475569;display:flex;gap:5px;align-items:center}
 input[type=number]{width:64px}
-#scoreWrap{background:#fff;border:1px solid #e2e8f0;border-radius:10px;max-height:380px;overflow-y:auto;scroll-behavior:smooth}
+#scoreWrap{background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow-y:auto;scroll-behavior:smooth}
 #score{display:block;width:100%;height:auto}
 .nh{color:#222}.nh.dim{color:#c3c9d2}.nh.cur{color:#2563eb}.nh.ok{color:#16a34a}.nh.err{color:#dc2626}.nh.tied{color:#6b7280}
 .stem{stroke:#222;fill:none}.stem.dim{stroke:#c3c9d2}
@@ -300,7 +300,7 @@ function yAt(sys,staff,pos){const c=S.score.clefs[staff]||(staff===0?'G':'F');re
 function renderScore(){
   const sc=S.score,svg=$('score');svg.innerHTML='';
   const {systems,SYSH}=layoutScore(sc);S.systems=systems;
-  svg.setAttribute('viewBox',`0 0 ${W} ${systems.length*SYSH+20}`);
+  S.SYSH=SYSH;svg.setAttribute('viewBox',`0 0 ${W} ${systems.length*SYSH+20}`);
   S.cursor=el('rect',{x:0,y:0,width:34,height:170,fill:'#dbeafe',opacity:.7,rx:6},svg);
   const placed=[];
   systems.forEach((s,si)=>{
@@ -396,6 +396,16 @@ function drawColumn(svg,sys,sc,mi,col,placed){
   });
 }
 
+// ---------- keep whole systems (treble + bass) visible ----------
+function fitScoreWrap(){
+  if(!S||!S.systems)return;
+  const wrap=$('scoreWrap'),scale=$('score').clientWidth/W,sysPx=S.SYSH*scale;
+  if(!(sysPx>0))return;
+  const used=document.querySelector('header').offsetHeight+document.querySelector('.bar').offsetHeight+$('dock').offsetHeight+48;
+  const n=Math.max(1,Math.min(S.systems.length,Math.floor((window.innerHeight-used)/sysPx)));
+  wrap.style.height=Math.ceil(n*sysPx+2)+'px';S.perPage=n;S.sysPx=sysPx;
+}
+
 // ---------- practice engine ----------
 function buildSteps(ov){
   ov=ov||{};S.drillRun=ov.from!==undefined;
@@ -436,8 +446,8 @@ function moveCursor(){
   const st=cur();if(!st){S.cursor.setAttribute('opacity',0);return;}
   const n=st.notes[0],sys=S.systems[n.sys];
   S.cursor.setAttribute('opacity',.7);S.cursor.setAttribute('x',n.x-18);S.cursor.setAttribute('y',sys.tb-45);S.cursor.setAttribute('height',sys.bb-sys.tb+55);
-  const wrap=$('scoreWrap'),sc=$('score').clientWidth/ (W);
-  const top=sys.y*sc;if(top<wrap.scrollTop||top>wrap.scrollTop+wrap.clientHeight-200)wrap.scrollTop=Math.max(0,top-10);
+  if(S.perPage){const wrap=$('scoreWrap'),target=Math.floor(n.sys/S.perPage)*S.perPage*S.sysPx;
+    if(Math.abs(wrap.scrollTop-target)>2)wrap.scrollTop=target;}
 }
 function refreshNext(){
   const st=cur(),box=$('next');
@@ -775,7 +785,7 @@ function loadXml(text,id){
     const rec=DB.songs[id]||(DB.songs[id]={title:sc.title,measures:{},sessions:[],updated:Date.now()});
     rec.title=sc.title;if(!id.startsWith('demo:'))rec.xml=text;DB.last=id;dbSave();
     $('mFrom').value=1;$('mTo').value=sc.measures.length;$('mTo').max=sc.measures.length;
-    renderScore();buildKeyboard();buildSteps();refreshSavedSelect();updateProgressUI();
+    renderScore();buildKeyboard();fitScoreWrap();buildSteps();refreshSavedSelect();updateProgressUI();
     say(`Loaded “${sc.title}” — ${sc.measures.length} measures. Press the highlighted note.`);
   }catch(e){say('⚠ '+e.message,'bad');console.error(e);}
 }
@@ -792,7 +802,7 @@ function showImg(blob){const i=$('refimg');i.src=URL.createObjectURL(blob);i.sty
 $('imgFile').onchange=e=>e.target.files[0]&&showImg(e.target.files[0]);
 addEventListener('paste',e=>{const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));if(it){showImg(it.getAsFile());document.querySelector('details').open=true;}});
 addEventListener('pointerdown',()=>{try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();}catch(e){}},{once:true});
-addEventListener('resize',()=>{if(S)moveCursor();});
+addEventListener('resize',()=>{if(S){fitScoreWrap();moveCursor();}});
 dbLoad();
 (()=>{const l=DB.last;
   if(l&&l.startsWith('demo:')&&DEMOS[l.slice(5)]){$('demo').value=l.slice(5);loadXml(DEMOS[l.slice(5)](),l);}
