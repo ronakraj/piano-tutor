@@ -65,6 +65,7 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
     <label style="display:none">Hands <select id="hands"><option value="both">Both</option><option value="right">Right only</option><option value="left">Left only</option></select></label>
     <label>Measures <input type="number" id="mFrom" min="1" value="1"> to <input type="number" id="mTo" min="1" value="1"></label>
     <label><input type="checkbox" id="names"> Show note names</label>
+    <label><input type="checkbox" id="showKb" checked> Show keyboard</label>
     <label><input type="checkbox" id="sp"> Smart practice</label><label>clean runs needed <input type="number" id="spNeed" min="1" max="5" value="2"></label>
     <label><input type="checkbox" id="met"> Metronome</label><label>BPM <input type="number" id="bpm" min="30" max="200" value="60"></label>
     <button id="btnRestart" class="primary">Restart</button>
@@ -778,6 +779,11 @@ function applyNames(){$('score').classList.toggle('names',$('names').checked);}
 $('names').onchange=()=>{applyNames();try{localStorage.setItem('pianoTutor.names',$('names').checked?'1':'0');}catch(e){}};
 try{$('names').checked=localStorage.getItem('pianoTutor.names')==='1';}catch(e){}
 
+// ---------- keyboard visibility ----------
+function applyKb(){$('kb').style.display=$('showKb').checked?'block':'none';if(S){fitScoreWrap();moveCursor();}}
+$('showKb').onchange=()=>{applyKb();try{localStorage.setItem('pianoTutor.kb',$('showKb').checked?'1':'0');}catch(e){}};
+try{if(localStorage.getItem('pianoTutor.kb')==='0')$('showKb').checked=false;}catch(e){}
+
 // ---------- hand selection ----------
 function syncHandBtns(){document.querySelectorAll('#handBtns button').forEach(b=>b.classList.toggle('on',b.dataset.h===$('hands').value));}
 function setHands(v){$('hands').value=v;syncHandBtns();if(S)buildSteps();}
@@ -793,7 +799,7 @@ function loadXml(text,id){
     const rec=DB.songs[id]||(DB.songs[id]={title:sc.title,measures:{},sessions:[],updated:Date.now()});
     rec.title=sc.title;if(!id.startsWith('demo:'))rec.xml=text;DB.last=id;dbSave();
     $('mFrom').value=1;$('mTo').value=sc.measures.length;$('mTo').max=sc.measures.length;
-    renderScore();buildKeyboard();fitScoreWrap();applyNames();buildSteps();refreshSavedSelect();updateProgressUI();
+    renderScore();buildKeyboard();applyKb();applyNames();buildSteps();refreshSavedSelect();updateProgressUI();
     say(`Loaded “${sc.title}” — ${sc.measures.length} measures. Press the highlighted note.`);
   }catch(e){say('⚠ '+e.message,'bad');console.error(e);}
 }
