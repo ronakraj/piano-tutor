@@ -58,6 +58,7 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
     <label>Demo <select id="demo"><option value="jingle">Jingle Bells (Alfred's p.30)</option><option value="ode">Ode to Joy (hands together)</option><option value="chords">Chords I–IV–V–I</option></select></label>
     <label>Hands <select id="hands"><option value="both">Both</option><option value="right">Right only</option><option value="left">Left only</option></select></label>
     <label>Measures <input type="number" id="mFrom" min="1" value="1"> to <input type="number" id="mTo" min="1" value="1"></label>
+    <label><input type="checkbox" id="sp"> Smart practice</label><label>clean runs needed <input type="number" id="spNeed" min="1" max="5" value="2"></label>
     <label><input type="checkbox" id="met"> Metronome</label><label>BPM <input type="number" id="bpm" min="30" max="200" value="60"></label>
     <button id="btnRestart" class="primary">Restart</button>
     <button id="btnBack">◀ Back</button><button id="btnSkip">Skip ▶</button>
@@ -67,7 +68,7 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
 
   <div id="summary"></div>
   <div id="dock">
-  <div id="feedback"><span id="beat" style="float:right;font-size:22px;color:#94a3b8"></span><div id="next"></div><div id="msg">Load a score and press the first note.</div><div id="stats"></div></div>
+  <div id="feedback"><span id="beat" style="float:right;font-size:22px;color:#94a3b8"></span><div id="next"></div><div id="msg">Load a score and press the first note.</div><div id="stats"></div><div id="spInfo" style="font-size:13px;color:#7c3aed;margin-top:4px"></div></div>
   <svg id="kb" viewBox="0 0 800 120"></svg>
   </div>
 
@@ -381,9 +382,12 @@ function drawColumn(svg,sys,sc,mi,col,placed){
 }
 
 // ---------- practice engine ----------
-function buildSteps(){
+function buildSteps(ov){
+  ov=ov||{};
+  if(!ov.keep)S.sp={phase:'full',queue:[],streak:0,fixed:[],fullRuns:0};
   const sc=S.score,hand=$('hands').value;
-  const from=Math.max(1,+$('mFrom').value||1)-1,to=Math.min(sc.measures.length,+$('mTo').value||sc.measures.length)-1;
+  let from=Math.max(1,+$('mFrom').value||1)-1,to=Math.min(sc.measures.length,+$('mTo').value||sc.measures.length)-1;
+  if(ov.from!==undefined){from=ov.from;to=ov.to;}
   sc.notes.forEach(n=>{n.step=null;n.inRange=false;});
   const map=new Map();
   sc.notes.forEach(n=>{
@@ -430,6 +434,7 @@ function refreshNext(){
 function refreshStats(){
   const done=S.steps.slice(0,S.idx),clean=done.filter(s=>!s.errs).length;
   $('stats').textContent=`Step ${Math.min(S.idx+1,S.steps.length)}/${S.steps.length} · clean ${clean}/${done.length} · wrong notes ${S.errTotal}`;
+  $('spInfo').textContent=spInfo();
 }
 function say(text,cls){const f=$('feedback');f.className=cls||'';void f.offsetWidth;f.className=cls||'';$('msg').innerHTML=text;}
 
@@ -468,16 +473,59 @@ function advance(){
 }
 function finish(){
   S.finished=true;metStop();
+  if($('sp').checked&&spAfterRun())return;
   const total=S.steps.length,clean=S.steps.filter(s=>!s.errs).length;
   const byM={};S.steps.forEach(s=>{if(s.errs)byM[s.measure]=(byM[s.measure]||0)+s.errs;});
   const worst=Object.entries(byM).sort((a,b)=>b[1]-a[1]);
   const box=$('summary');box.style.display='block';
   box.innerHTML=`<h3 style="margin:0 0 6px">Finished! ${clean}/${total} steps played cleanly (${Math.round(100*clean/Math.max(1,total))}%)</h3>`+
-    timingSummary()+(worst.length?`<div>Trouble spots: ${worst.map(([m,c])=>`measure ${+m+1} (${c} wrong)`).join(', ')}</div><p><button class="primary" id="btnWorst">Practise measure ${+worst[0][0]+1}</button> <button id="btnAgain">Play again</button></p>`:`<p>Perfect run! 🎉 <button id="btnAgain">Play again</button></p>`);
-  $('btnAgain').onclick=buildSteps;
+    timingSummary()+spSummary()+(worst.length?`<div>Trouble spots: ${worst.map(([m,c])=>`measure ${+m+1} (${c} wrong)`).join(', ')}</div><p><button class="primary" id="btnWorst">Practise measure ${+worst[0][0]+1}</button> <button id="btnAgain">Play again</button></p>`:`<p>Perfect run! 🎉 <button id="btnAgain">Play again</button></p>`);
+  $('btnAgain').onclick=()=>buildSteps();
   const bw=$('btnWorst');if(bw)bw.onclick=()=>{$('mFrom').value=$('mTo').value=+worst[0][0]+1;buildSteps();};
   say('🎉 Done!','good');
 }
+// ---------- smart practice: drill trouble measures, then back to the full song ----------
+const spNeed=()=>Math.max(1,+$('spNeed').value||2);
+function spInfo(){
+  if(!$('sp').checked||!S||!S.sp)return '';
+  const sp=S.sp;
+  if(sp.phase==='drill')return `🎯 Drilling measure ${sp.queue[0]+1}: clean runs in a row ${sp.streak}/${spNeed()}. Trouble measures left: ${sp.queue.map(m=>m+1).join(', ')}. Then back to the full song.`;
+  return `🎼 Full pass ${sp.fullRuns+1}${sp.fixed.length?` — drilled so far: measures ${sp.fixed.join(', ')}`:''}. Any mistakes get drilled afterwards.`;
+}
+function spSummary(){
+  if(!$('sp').checked||!S.sp||!S.sp.fixed.length)return '';
+  return `<div>Smart practice: drilled measures ${S.sp.fixed.join(', ')}, then finished with a clean full pass (${S.sp.fullRuns} full pass${S.sp.fullRuns>1?'es':''}).</div>`;
+}
+function spAfterRun(){ // true = more practice queued, false = show the normal summary
+  if(!S.sp)S.sp={phase:'full',queue:[],streak:0,fixed:[],fullRuns:0};
+  const sp=S.sp,byM={};
+  S.steps.forEach(st=>{if(st.errs)byM[st.measure]=1;});
+  const bad=Object.keys(byM).map(Number).sort((a,b)=>a-b);
+  if(sp.phase==='full'){
+    sp.fullRuns++;
+    if(!bad.length)return false;
+    sp.queue=bad;sp.phase='drill';sp.streak=0;
+    bad.forEach(m=>{if(!sp.fixed.includes(m+1))sp.fixed.push(m+1);});sp.fixed.sort((a,b)=>a-b);
+    buildSteps({keep:true,from:bad[0],to:bad[0]});
+    say(`Full pass done — ${bad.length} measure${bad.length>1?'s':''} had mistakes. Let's drill measure ${bad[0]+1}.`,'bad');
+    return true;
+  }
+  const m=sp.queue[0];
+  sp.streak=bad.length?0:sp.streak+1;
+  let msg;
+  if(sp.streak>=spNeed()){
+    sp.queue.shift();sp.streak=0;
+    if(!sp.queue.length){
+      sp.phase='full';buildSteps({keep:true});
+      say(`✓ Measure ${m+1} is solid. All trouble spots drilled — back to the full song.`,'good');return true;
+    }
+    msg=`✓ Measure ${m+1} is solid. Next: measure ${sp.queue[0]+1}.`;
+  }else msg=bad.length?`Not clean yet — measure ${m+1} again.`:`✓ Clean! ${sp.streak}/${spNeed()} — once more.`;
+  const t=sp.queue[0];buildSteps({keep:true,from:t,to:t});
+  say(msg,bad.length?'bad':'good');
+  return true;
+}
+$('sp').onchange=()=>{if(S){buildSteps();say($('sp').checked?'Smart practice on — play the song; mistakes will be drilled afterwards.':'Smart practice off.');}};
 function showGhost(m,st){
   const n=st.notes[0],sys=S.systems[n.sys];const g=S.ghostG;g.innerHTML='';
   const staff=m>=60?0:1,sharp=[1,3,6,8,10].includes(m%12);
