@@ -709,12 +709,20 @@ async function connectMidi(){
 function setStatus(on,t){const s=$('midiStatus');s.textContent=t;s.className='pill '+(on?'on':'off');}
 function listInputs(){const a=[];if(midiAccess.inputs.forEach)midiAccess.inputs.forEach(i=>a.push(i));else for(const i of midiAccess.inputs.values())a.push(i);return a;}
 let lastKey='',attached=[];
+const midiHeld=new Map(),midiLog=[];
 function onMidi(e){
   const d=e.data||[];const key=d.join(',')+'|'+e.timeStamp;if(key===lastKey)return;lastKey=key;
   const [st,n,v]=d,c=st&0xf0;
   const hex=[...d].map(x=>x.toString(16).padStart(2,'0')).join(' ');
-  if(st<0xf0)$('midiLast').textContent='last MIDI: '+hex+(c===0x90&&v>0?' (note on '+midiName(n)+')':c===0x80||c===0x90?' (note off)':'');
-  if(c===0x90&&v>0)noteOn(n);else if(c===0x80||(c===0x90&&v===0))noteOff(n);
+  const isOn=c===0x90&&v>0,isOff=c===0x80||(c===0x90&&v===0);
+  let note='';
+  if(isOn){
+    // a key that is already down can't be struck again: ignore repeated note-ons (stuck/duplicate messages)
+    if(midiHeld.has(n)&&Date.now()-midiHeld.get(n)<8000){note=' (ignored: key already down)';}
+    else{midiHeld.set(n,Date.now());noteOn(n);note=' (note on '+midiName(n)+')';}
+  }else if(isOff){midiHeld.delete(n);noteOff(n);note=' (note off)';}
+  if(st<0xf0){midiLog.push(hex+note);if(midiLog.length>4)midiLog.shift();
+    $('midiLast').textContent='last MIDI: '+midiLog.slice().reverse().join('  ‹  ');}
 }
 function refreshInputs(){
   const ins=listInputs(),sel=$('midiSel');
