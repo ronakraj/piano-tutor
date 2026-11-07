@@ -50,6 +50,7 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
   <span id="midiStatus" class="pill off">MIDI: not connected</span>
   <button id="btnMidi">Connect piano</button>
   <select id="midiSel" style="display:none"></select>
+  <span id="midiLast" class="pill" title="Last MIDI message received">last MIDI: –</span>
 </header>
 <main>
   <div class="bar">
@@ -601,21 +602,25 @@ async function connectMidi(){
 }
 function setStatus(on,t){const s=$('midiStatus');s.textContent=t;s.className='pill '+(on?'on':'off');}
 function listInputs(){const a=[];if(midiAccess.inputs.forEach)midiAccess.inputs.forEach(i=>a.push(i));else for(const i of midiAccess.inputs.values())a.push(i);return a;}
+let lastKey='',attached=[];
+function onMidi(e){
+  const d=e.data||[];const key=d.join(',')+'|'+e.timeStamp;if(key===lastKey)return;lastKey=key;
+  const [st,n,v]=d,c=st&0xf0;
+  const hex=[...d].map(x=>x.toString(16).padStart(2,'0')).join(' ');
+  if(st<0xf0)$('midiLast').textContent='last MIDI: '+hex+(c===0x90&&v>0?' (note on '+midiName(n)+')':c===0x80||c===0x90?' (note off)':'');
+  if(c===0x90&&v>0)noteOn(n);else if(c===0x80||(c===0x90&&v===0))noteOff(n);
+}
 function refreshInputs(){
   const ins=listInputs(),sel=$('midiSel');
   sel.innerHTML=ins.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
   sel.style.display=ins.length>1?'':'none';
   if(!ins.length){setStatus(false,'MIDI: no input found — pair the piano first');return;}
-  const pick=ins.find(i=>/roland|fp-|rd-|go:|piano|digital/i.test(i.name))||ins[0];
-  sel.value=pick.id;useInput(pick);
+  attached.forEach(i=>{try{i.onmidimessage=null;i.removeEventListener&&i.removeEventListener('midimessage',onMidi);}catch(e){}});
+  attached=ins;
+  ins.forEach(i=>{try{i.onmidimessage=onMidi;i.addEventListener&&i.addEventListener('midimessage',onMidi);const o=i.open&&i.open();o&&o.catch&&o.catch(()=>{});}catch(e){console.error(e);}});
+  setStatus(true,'MIDI: '+ins.map(i=>i.name).join(' + '));
 }
-function useInput(inp){
-  if(curInput)curInput.onmidimessage=null;curInput=inp;
-  inp.onmidimessage=e=>{const [s,n,v]=e.data,c=s&0xf0;
-    if(c===0x90&&v>0)noteOn(n);else if(c===0x80||(c===0x90&&v===0))noteOff(n);};
-  setStatus(true,'MIDI: '+inp.name);
-}
-$('midiSel').onchange=()=>{const i=listInputs().find(x=>x.id===$('midiSel').value);if(i)useInput(i);};
+
 $('btnMidi').onclick=connectMidi;
 
 // ---------- loading ----------
