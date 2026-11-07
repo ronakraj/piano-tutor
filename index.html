@@ -26,6 +26,7 @@ main{max-width:1100px;margin:0 auto;padding:12px 16px}
 input[type=number]{width:64px}
 #scoreWrap{background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow-y:auto;scroll-behavior:smooth}
 #score{display:block;width:100%;height:auto}
+.nl{display:none}#score.names .nl{display:inline}
 .nh{color:#222}.nh.dim{color:#c3c9d2}.nh.cur{color:#2563eb}.nh.ok{color:#16a34a}.nh.err{color:#dc2626}.nh.tied{color:#6b7280}
 .stem{stroke:#222;fill:none}.stem.dim{stroke:#c3c9d2}
 #feedback{margin:12px 0;padding:14px 16px;border-radius:10px;background:#fff;border:2px solid #e2e8f0;min-height:92px}
@@ -63,6 +64,7 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
     <label><input type="checkbox" id="seq"> Guided: right → left → both</label>
     <label style="display:none">Hands <select id="hands"><option value="both">Both</option><option value="right">Right only</option><option value="left">Left only</option></select></label>
     <label>Measures <input type="number" id="mFrom" min="1" value="1"> to <input type="number" id="mTo" min="1" value="1"></label>
+    <label><input type="checkbox" id="names"> Show note names</label>
     <label><input type="checkbox" id="sp"> Smart practice</label><label>clean runs needed <input type="number" id="spNeed" min="1" max="5" value="2"></label>
     <label><input type="checkbox" id="met"> Metronome</label><label>BPM <input type="number" id="bpm" min="30" max="200" value="60"></label>
     <button id="btnRestart" class="primary">Restart</button>
@@ -377,6 +379,7 @@ function drawColumn(svg,sys,sc,mi,col,placed){
         for(let p=base+10;p<=n.pos;p+=2)el('line',{x1:hx-9,x2:hx+9,y1:yAt(sys,st,p),y2:yAt(sys,st,p),stroke:'currentColor'},gEl);
         const hollow=n.type==='whole'||n.type==='half'||n.type==='breve';
         el('ellipse',{cx:hx,cy:h.y,rx:6.2,ry:4.6,transform:`rotate(-20 ${hx} ${h.y})`,fill:hollow?'#fff':'currentColor',stroke:'currentColor','stroke-width':1.4},gEl);
+        const lb=el('text',{x:hx,y:h.y+.5,'font-size':9,'font-weight':700,'text-anchor':'middle','dominant-baseline':'central',fill:hollow?'currentColor':'#fff',class:'nl'},gEl);lb.textContent=n.step;
         if(n.showAcc){const t=el('text',{x:col.x-16-accN*10,y:h.y,'font-size':18,'text-anchor':'middle','dominant-baseline':'central',fill:'currentColor'},gEl);t.textContent=ACC[n.alter];accN++;}
         for(let d=0;d<n.dots;d++){const dy=((n.pos-base)%2+2)%2===0?h.y-5:h.y;el('circle',{cx:hx+11+d*5,cy:dy,r:1.8,fill:'currentColor'},gEl);}
       });
@@ -770,6 +773,11 @@ $('saved').onchange=()=>{const id=$('saved').value;if(id&&DB.songs[id]&&DB.songs
 $('btnExport').onclick=()=>{const t=$('xfer');t.value=JSON.stringify({songs:DB.songs,last:DB.last});t.select();try{navigator.clipboard.writeText(t.value);}catch(e){}};
 $('btnImport').onclick=()=>{try{const o=JSON.parse($('xfer').value);Object.assign(DB.songs,o.songs||{});dbSave();refreshSavedSelect();updateProgressUI();markMeasures();say('Progress imported.','good');}catch(e){say('⚠ Could not read that progress data.','bad');}};
 
+// ---------- note names toggle ----------
+function applyNames(){$('score').classList.toggle('names',$('names').checked);}
+$('names').onchange=()=>{applyNames();try{localStorage.setItem('pianoTutor.names',$('names').checked?'1':'0');}catch(e){}};
+try{$('names').checked=localStorage.getItem('pianoTutor.names')==='1';}catch(e){}
+
 // ---------- hand selection ----------
 function syncHandBtns(){document.querySelectorAll('#handBtns button').forEach(b=>b.classList.toggle('on',b.dataset.h===$('hands').value));}
 function setHands(v){$('hands').value=v;syncHandBtns();if(S)buildSteps();}
@@ -785,7 +793,7 @@ function loadXml(text,id){
     const rec=DB.songs[id]||(DB.songs[id]={title:sc.title,measures:{},sessions:[],updated:Date.now()});
     rec.title=sc.title;if(!id.startsWith('demo:'))rec.xml=text;DB.last=id;dbSave();
     $('mFrom').value=1;$('mTo').value=sc.measures.length;$('mTo').max=sc.measures.length;
-    renderScore();buildKeyboard();fitScoreWrap();buildSteps();refreshSavedSelect();updateProgressUI();
+    renderScore();buildKeyboard();fitScoreWrap();applyNames();buildSteps();refreshSavedSelect();updateProgressUI();
     say(`Loaded “${sc.title}” — ${sc.measures.length} measures. Press the highlighted note.`);
   }catch(e){say('⚠ '+e.message,'bad');console.error(e);}
 }
