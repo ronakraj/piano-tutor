@@ -27,7 +27,7 @@ input[type=number]{width:64px}
 #scoreWrap{background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow-y:auto;scroll-behavior:smooth}
 #score{display:block;width:100%;height:auto}
 .nl{display:none}#score.names .nl{display:inline}
-.nh{color:#222}.nh.dim{color:#c3c9d2}.nh.cur{color:#2563eb}.nh.ok{color:#16a34a}.nh.err{color:#dc2626}.nh.tied{color:#6b7280}
+.nh{color:#222}.nh.dim{color:#c3c9d2}.nh.cur{color:#2563eb}.nh.ok{color:#16a34a}.nh.err{color:#dc2626}.nh.fixed{color:#d97706}.nh.tied{color:#6b7280}
 .stem{stroke:#222;fill:none}.stem.dim{stroke:#c3c9d2}
 #feedback{margin:12px 0;padding:14px 16px;border-radius:10px;background:#fff;border:2px solid #e2e8f0;min-height:92px}
 #feedback.bad{border-color:#dc2626;background:#fef2f2;animation:shake .3s}
@@ -441,7 +441,7 @@ function refreshStyles(){
     if(!n.inRange)c+=' dim';
     else if(n.tieStop)c+=' tied';
     else{const st=n.step,i=S.steps.indexOf(st);
-      if(st&&i<S.idx)c+=bad(st)?' err':' ok';
+      if(st&&i<S.idx)c+=st.errs?' err':(st.hadErr&&!(S.loop&&S.loop.measure===st.measure))?' fixed':' ok';
       else if(st===cur())c+=S.hit.has(n.midi)?' ok':' cur';}
     n.el.setAttribute('class',c);
     if(n.stemEl)n.stemEl.setAttribute('class','stem'+(n.inRange?'':' dim'));
