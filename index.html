@@ -418,7 +418,7 @@ function buildSteps(ov){
   const sc=S.score,hand=$('hands').value;
   let from=Math.max(1,+$('mFrom').value||1)-1,to=Math.min(sc.measures.length,+$('mTo').value||sc.measures.length)-1;
   if(ov.from!==undefined){from=ov.from;to=ov.to;}
-  sc.notes.forEach(n=>{n.step=null;n.inRange=false;});
+  sc.notes.forEach(n=>{n.step=null;n.inRange=false;n.missed=false;n.hadMiss=false;});
   const map=new Map();
   sc.notes.forEach(n=>{
     if(n.rest||n.measure<from||n.measure>to)return;
@@ -441,8 +441,8 @@ function refreshStyles(){
     if(!n.inRange)c+=' dim';
     else if(n.tieStop)c+=' tied';
     else{const st=n.step,i=S.steps.indexOf(st);
-      if(st&&i<S.idx)c+=st.errs?' err':(st.hadErr&&!(S.loop&&S.loop.measure===st.measure))?' fixed':' ok';
-      else if(st===cur())c+=S.hit.has(n.midi)?' ok':' cur';}
+      if(st&&i<S.idx)c+=n.missed?' err':(n.hadMiss&&!(S.loop&&S.loop.measure===st.measure))?' fixed':' ok';
+      else if(st===cur())c+=S.hit.has(n.midi)?' ok':(n.missed?' err':' cur');}
     n.el.setAttribute('class',c);
     if(n.stemEl)n.stemEl.setAttribute('class','stem'+(n.inRange?'':' dim'));
   });
@@ -468,6 +468,10 @@ function refreshStats(){
 }
 function say(text,cls){const f=$('feedback');f.className=cls||'';void f.offsetWidth;f.className=cls||'';$('msg').innerHTML=text;}
 
+function nearestMissing(played,st){
+  const rem=st.notes.filter(n=>!S.hit.has(n.midi));if(!rem.length)return null;
+  let best=rem[0],bd=1e9;rem.forEach(n=>{const d=Math.abs(played-n.midi);if(d<bd){bd=d;best=n;}});return best;
+}
 function describeMiss(played,st){
   let rem=st.notes.filter(n=>!S.hit.has(n.midi));if(!rem.length)rem=st.notes;
   let best=rem[0],bd=1e9;rem.forEach(n=>{const d=Math.abs(played-n.midi);if(d<bd){bd=d;best=n;}});
@@ -491,7 +495,7 @@ function noteOn(m){
     if(S.hit.size===req.size){advance();return;}
     if(!had)say('✓ Got it — still waiting for: '+st.notes.filter(n=>!S.hit.has(n.midi)).map(n=>n.name).join(' '),'good');
   }else{
-    keyMark.set(m,'bad');st.errs++;S.errTotal++;
+    keyMark.set(m,'bad');st.errs++;S.errTotal++;const tg=nearestMissing(m,st);if(tg)tg.missed=true;
     say(describeMiss(m,st),'bad');showGhost(m,st);
   }
   refreshAll();
@@ -541,7 +545,7 @@ function guidedLoop(st){ // call after S.idx++; returns true if it moved back to
   const ms=S.steps.filter(x=>x.measure===st.measure);
   if(ms[ms.length-1]!==st)return false;
   const clean=ms.every(x=>!x.errs),need=spNeed();
-  const start=()=>{S.idx=S.steps.indexOf(ms[0]);S.hit=new Set();ms.forEach(x=>{if(x.errs)x.hadErr=true;x.errs=0;});metStart(S.idx);};
+  const start=()=>{S.idx=S.steps.indexOf(ms[0]);S.hit=new Set();ms.forEach(x=>{if(x.errs)x.hadErr=true;x.errs=0;x.notes.forEach(n=>{if(n.missed)n.hadMiss=true;n.missed=false;});});metStart(S.idx);};
   if(S.loop&&S.loop.measure===st.measure){
     S.loop.streak=clean?S.loop.streak+1:0;
     if(S.loop.streak>=need){S.loop=null;say(`✓ Bar ${st.measure+1} is solid — carrying on.`,'good');return false;}
