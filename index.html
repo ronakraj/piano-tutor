@@ -67,7 +67,7 @@ body.coach #stats{display:none}
 #coach .cbtns{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}#coach .cbtns:empty{display:none}
 #coach .cfoot{margin-top:6px;font-size:13px;color:#64748b;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 #coach .cfoot .cur{font-weight:700;color:#7c3aed}#coach .cfoot input{width:64px}
-#coach button.link{border:none;background:none;color:#94a3b8;text-decoration:underline;padding:0;min-height:0;font-size:12px}
+#coach .cact{margin-left:auto;display:flex;gap:14px}#coach button.link{border:none;background:none;color:#7c3aed;padding:0;min-height:0;font-size:13px;font-weight:600}
 #modeBtns button{border-radius:0;margin-right:-1px}#modeBtns button:first-child{border-radius:8px 0 0 8px}#modeBtns button:last-child{border-radius:0 8px 8px 0}#modeBtns button.on{background:#7c3aed;color:#fff;border-color:#7c3aed}
 header{gap:8px;padding:8px 12px}header h1{font-size:20px;margin:0}
 #songSel{max-width:240px}
@@ -79,12 +79,12 @@ main{max-width:none;padding:8px 12px}
 #feedback{margin:6px 0;padding:8px 12px;min-height:0;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
 #feedback #msg{font-size:17px;margin:0;flex:1 1 300px}#feedback #next{flex:none}
 #beat{order:9;font-size:20px;color:#94a3b8}#spInfo{font-size:13px;color:#7c3aed;flex-basis:100%}#spInfo:empty,#stats:empty{display:none}
-#drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,94vw);background:#f8fafc;box-shadow:-6px 0 24px rgba(0,0,0,.18);transform:translateX(105%);transition:transform .22s;overflow-y:auto;z-index:20;padding:0 12px 24px}
-body.drawer #drawer{transform:none}
+.pane{position:fixed;top:0;right:0;bottom:0;width:min(440px,94vw);background:#f8fafc;box-shadow:-6px 0 24px rgba(0,0,0,.18);transform:translateX(105%);transition:transform .22s;overflow-y:auto;z-index:20;padding:0 12px 24px}
+.pane.open{transform:none}
 #drawerBg{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;z-index:19}body.drawer #drawerBg{display:block}
 .dhead{position:sticky;top:0;background:#f8fafc;display:flex;justify-content:space-between;align-items:center;padding:12px 0;font-size:17px;z-index:1}
-#drawer details label{display:flex;gap:8px;align-items:center;margin:8px 0;font-size:15px}
-#drawer #wordList{grid-template-columns:1fr}
+#drawer details label,.lbltog{display:flex;gap:8px;align-items:center;margin:8px 0;font-size:15px}
+#wordsPane #wordList{grid-template-columns:1fr}
 .hint{font-size:13px;color:#64748b}
 #coach{padding:8px 12px}#coach .csay{font-size:19px;margin:4px 0 0}#coach .cnote{margin-top:4px}
 /* paper theme */
@@ -106,7 +106,7 @@ header{background:#292524}header select,header button{background:#44403c;color:#
   <button id="btnPlay" title="Hear the song">▶ Listen</button>
   <button id="btnMidi" title="Connect your piano"><span id="midiStatus" class="dot off"></span><span id="midiName">Connect piano</span></button>
   <button id="btnWords" title="Music words">📖</button>
-  <button id="btnMore" title="Settings &amp; more">☰</button>
+  <button id="btnMore" title="Settings">⚙</button>
 </header>
 <main>
   <div class="bar free">
@@ -126,25 +126,17 @@ header{background:#292524}header select,header button{background:#44403c;color:#
 </main>
 
 <div id="drawerBg"></div>
-<aside id="drawer" aria-label="Settings and more">
-  <div class="dhead"><b>Settings &amp; more</b><button id="btnClose" title="Close">✕</button></div>
+<aside id="drawer" class="pane" aria-label="Settings">
+  <div class="dhead"><b>⚙ Settings</b><button class="paneClose" title="Close">✕</button></div>
   <details open>
     <summary>Display</summary>
     <label><input type="checkbox" id="names"> Show note names on the notes</label>
-    <label><input type="checkbox" id="labels"> Label the score (clef, bar line, chord…)</label>
     <label><input type="checkbox" id="showKb" checked> Show keyboard</label>
-  </details>
-  <details id="words">
-    <summary>📖 Music words</summary>
-    <p class="hint">Tick <b>Label the score</b> to see these marked on the music; tap a label to read about it here.</p>
-    <button id="btnQuiz" class="primary">Test me</button> <span id="wordProg" class="hint"></span>
-    <div id="quiz" style="display:none"></div>
-    <div id="wordList"></div>
   </details>
   <details id="prog">
     <summary>My progress</summary>
     <div id="progBody"></div>
-    <p><button id="coResetBtn">Start the coach over for this song</button></p>
+    <p class="hint">To start a song from scratch or test yourself on it, use <b>↺ Start over</b> or <b>🎯 Test me</b> on the coach box.</p>
     <details><summary>Back up / move progress</summary>
       <p class="hint">Progress is saved in this browser on this device. Export it to keep a backup or move it to another device (paste it into Import there).</p>
       <textarea id="xfer" placeholder="Exported progress appears here; paste here to import"></textarea><br>
@@ -186,6 +178,16 @@ header{background:#292524}header select,header button{background:#44403c;color:#
     <p class="hint">Piano status: <span id="midiText">not connected</span></p>
     <p><select id="midiSel" style="display:none"></select> <span id="midiLast" class="hint">last MIDI: –</span></p>
   </details>
+</aside>
+<aside id="wordsPane" class="pane" aria-label="Music words">
+  <div class="dhead"><b>📖 Music words</b><button class="paneClose" title="Close">✕</button></div>
+  <div id="words">
+    <label class="lbltog"><input type="checkbox" id="labels"> Label these on the music</label>
+    <p class="hint">Tap a label on the music to jump to it here.</p>
+    <button id="btnQuiz" class="primary">Test me</button> <span id="wordProg" class="hint"></span>
+    <div id="quiz" style="display:none"></div>
+    <div id="wordList"></div>
+  </div>
 </aside>
 <script>
 'use strict';
@@ -584,6 +586,7 @@ function describeMiss(played,st){
 function noteOn(m){
   down.add(m);
   if(!S||!S.steps||PB.on)return;
+  if(coachOn()&&CO.mode==='listen')return;
   keyMark.set(m,'pend');
   const st=cur();
   if(!st){keyMark.set(m,'ok');refreshKeys();return;}
@@ -823,6 +826,7 @@ async function connectMidi(){
   if(!navigator.requestMIDIAccess){setStatus(false,'MIDI: not supported in this browser (use Chrome/Edge)');return;}
   try{midiAccess=await navigator.requestMIDIAccess();}catch(e){setStatus(false,'MIDI: permission denied');return;}
   midiAccess.onstatechange=refreshInputs;refreshInputs();
+  try{localStorage.setItem('pianoTutor.midi','1');}catch(e){}
 }
 function setStatus(on,t){$('midiStatus').className='dot '+(on?'on':'off');$('midiName').textContent=on?t.replace(/^MIDI: /,''):'Connect piano';$('btnMidi').title=t;$('midiText').textContent=t.replace(/^MIDI: /,'');}
 function listInputs(){const a=[];if(midiAccess.inputs.forEach)midiAccess.inputs.forEach(i=>a.push(i));else for(const i of midiAccess.inputs.values())a.push(i);return a;}
@@ -851,6 +855,8 @@ function refreshInputs(){
   attached=ins;
   ins.forEach(i=>{try{i.onmidimessage=onMidi;i.addEventListener&&i.addEventListener('midimessage',onMidi);const o=i.open&&i.open();o&&o.catch&&o.catch(()=>{});}catch(e){console.error(e);}});
   setStatus(true,'MIDI: '+ins.map(i=>i.name).join(' + '));pbLabel();
+  if(coachOn()&&CO.mode==='listen'&&!PB.on&&CO.last)coListenRefresh();
+  const o=pickOutput();$('midiText').textContent+=o?` — Listen plays on “${o.name}”`:' — no output found, so Listen uses the app\'s sound';
 }
 
 $('btnMidi').onclick=connectMidi;
@@ -917,12 +923,12 @@ $('progBody').onclick=e=>{
   else if(b.dataset.act==='reset'&&confirm('Reset saved progress for this song?')){const r=songRec();r.measures={};r.sessions=[];dbSave();markMeasures();updateProgressUI();}
 };
 // ---------- header: one song picker, settings drawer ----------
-function openDrawer(){document.body.classList.add('drawer');}
-function closeDrawer(){document.body.classList.remove('drawer');}
-$('btnMore').onclick=openDrawer;$('btnClose').onclick=closeDrawer;$('drawerBg').onclick=closeDrawer;
-$('btnWords').onclick=()=>{openDrawer();$('words').open=true;setTimeout(()=>$('words').scrollIntoView({behavior:'smooth'}),50);};
+function openPane(id){document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('open',p.id===id));document.body.classList.add('drawer');}
+function openDrawer(){openPane('drawer');}
+function closeDrawer(){document.querySelectorAll('.pane').forEach(p=>p.classList.remove('open'));document.body.classList.remove('drawer');}
+$('btnMore').onclick=openDrawer;document.querySelectorAll('.paneClose').forEach(b=>b.onclick=closeDrawer);$('drawerBg').onclick=closeDrawer;
+$('btnWords').onclick=()=>openPane('wordsPane');
 addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer();});
-$('coResetBtn').onclick=()=>{const b=$('coResetBtn');if(!S)return;if(b.dataset.sure){delete b.dataset.sure;b.textContent='Start the coach over for this song';delete songRec().coach;dbSave();closeDrawer();setMode('coach');}else{b.dataset.sure=1;b.textContent='Tap again to confirm';}};
 function refreshSongSel(){
   const sel=$('songSel');if(!sel)return;
   const book=[...$('demo').options].map(o=>`<option value="demo:${o.value}">${o.textContent}</option>`).join('');
@@ -1009,7 +1015,7 @@ function renderWords(){
   $('wordList').innerHTML=WORDS.map((w,i)=>`<div class="word" id="word-${i}">${w.pic?`<div class="wpic">${w.pic}</div>`:''}<div><b>${w.t}</b>${w.a?` <small>(${w.a})</small>`:''}${learned(w)?' <small style="color:#16a34a">✓ learned</small>':''}<div>${w.d}</div><div class="tip">💡 ${w.tip}</div></div></div>`).join('');
   wordsProgress();
 }
-function showTerm(t){const i=WORDS.findIndex(w=>w.t===t);if(i<0)return;openDrawer();$('words').open=true;const c=$('word-'+i);
+function showTerm(t){const i=WORDS.findIndex(w=>w.t===t);if(i<0)return;openPane('wordsPane');const c=$('word-'+i);
   c.scrollIntoView({behavior:'smooth',block:'center'});c.classList.remove('flash');void c.offsetWidth;c.classList.add('flash');}
 let Q=null;
 function quizNext(){
@@ -1069,7 +1075,7 @@ try{$('labels').checked=localStorage.getItem('pianoTutor.labels')==='1';}catch(e
 
 // ---------- playback: play the score on the piano (MIDI out) or through the app ----------
 const PB={on:false,timers:[],active:new Set(),voices:new Set()};
-function listOutputs(){const a=[];if(midiAccess&&midiAccess.outputs)midiAccess.outputs.forEach(o=>a.push(o));return a;}
+function listOutputs(){const a=[],o=midiAccess&&midiAccess.outputs;if(!o)return a;try{if(o.forEach)o.forEach(x=>a.push(x));else for(const x of o.values())a.push(x);}catch(e){}return a;}
 function pickOutput(){const outs=listOutputs();if(!outs.length)return null;const nm=(attached[0]&&attached[0].name)||'';return outs.find(o=>o.name===nm)||outs[0];}
 function pbLabel(){const b=$('btnPlay');if(!b)return;b.textContent=PB.on?'■ Stop':'▶ Listen';b.title=pickOutput()?'Play the song on your piano':'Play the song through the app (connect your piano to hear it there)';}
 function pbEvents(){ // one sounding note per tie chain, for the current hands and measures
@@ -1100,7 +1106,10 @@ function pbStart(){
     while(i<ev.length){
       const e=ev[i],on=start+(e.t-t0)*spb*1000;if(on>now+150)break;
       const off=on+Math.max(.05,e.dur*spb-.04)*1000;
-      try{if(out){out.send([0x90,e.midi,80],on);out.send([0x80,e.midi,0],off);}else if(ac)pbSynth(e.midi,acStart+(on-start)/1000,acStart+(off-start)/1000);}catch(err){console.error(err);}
+      if(out){const snd=d=>{try{out.send(d);}catch(err){console.error(err);PB.err=err;}};
+        PB.timers.push(setTimeout(()=>{if(PB.on)snd([0x90,e.midi,80]);},Math.max(0,on-now)));
+        PB.timers.push(setTimeout(()=>snd([0x80,e.midi,0]),Math.max(0,off-now)));}
+      else if(ac){try{pbSynth(e.midi,acStart+(on-start)/1000,acStart+(off-start)/1000);}catch(err){console.error(err);}}
       PB.active.add(e.midi);
       PB.timers.push(setTimeout(()=>{const k=S.steps.indexOf(e.st);if(PB.on&&k>=0&&k!==S.idx){S.idx=k;S.hit=new Set();refreshAll();}},Math.max(0,on-now)));
       i++;
@@ -1114,8 +1123,7 @@ function pbStart(){
 function pbHalt(){
   if(!PB.on)return;PB.on=false;clearInterval(PB.iv);PB.timers.forEach(clearTimeout);PB.timers=[];
   const out=PB.out;
-  if(out){try{out.clear&&out.clear();}catch(e){}
-    try{PB.active.forEach(m=>out.send([0x80,m,0]));out.send([0xB0,123,0]);}catch(e){}}
+  if(out){try{PB.active.forEach(m=>out.send([0x80,m,0]));out.send([0xB0,123,0]);}catch(e){}}
   PB.voices.forEach(o=>{try{o.stop();}catch(e){}});PB.voices.clear();PB.active.clear();pbLabel();
 }
 function pbStop(why){pbHalt();buildSteps(S.lastOv);if(coachOn()&&CO.mode==='listen'){coOnListened();return;}say(why==='done'?'Finished playing — now you try. Press the highlighted note.':'Playback stopped.');}
@@ -1147,8 +1155,10 @@ function coShow(sayTxt,sub,btns,note,chip){
   const c=coRec(),L=coLevels(),box=$('coach');
   const phases=PH.map((p,i)=>`<span class="${i<c.phase?'done':i===c.phase?'now':''}">${i<c.phase?'✓ ':''}${p.name}</span>`).join('<b>›</b>');
   const ladder=c.phase===3?`<div class="cfoot">Speed: ${['slow','steady','book speed'].map(n=>`<span class="${coSpeedName(CO.level)===n?'cur':''}">${n}</span>`).join(' → ')} <small>(${L[CO.level]} beats a minute)</small> <span>· book speed <input type="number" id="coTarget" min="40" max="200" value="${c.target}"></span></div>`:'';
-  box.innerHTML=`<div class="cphase">${phases}</div>${note?`<div class="cnote">${note}</div>`:''}<div class="csay">${sayTxt}${chip?` <span class="cchip">${chip}</span>`:''}</div>${sub?`<div class="csub">${sub}</div>`:''}<div class="cbtns"></div>${ladder}`;
+  box.innerHTML=`<div class="cphase">${CO.mode==='test'?'<span class="now">🎯 Placement test</span>':phases}<span class="cact"><button class="link" id="coTestBtn">🎯 Test me</button><button class="link" id="coOver">↺ Start over</button></span></div>${note?`<div class="cnote">${note}</div>`:''}<div class="csay">${sayTxt}${chip?` <span class="cchip">${chip}</span>`:''}</div>${sub?`<div class="csub">${sub}</div>`:''}<div class="cbtns"></div>${ladder}`;
   const bb=box.querySelector('.cbtns');(btns||[]).forEach((b,i)=>{const e=document.createElement('button');e.textContent=b.t;if(!i)e.className='primary';e.onclick=b.f;bb.appendChild(e);});
+  $('coTestBtn').onclick=coTestStart;
+  const ov=$('coOver');ov.onclick=()=>{if(ov.dataset.sure){delete songRec().coach;dbSave();coStart();}else{ov.dataset.sure=1;ov.textContent='Tap again to start this song from scratch';}};
   const tg=$('coTarget');if(tg)tg.onchange=()=>{c.target=Math.max(40,Math.min(200,+tg.value||80));CO.level=Math.min(CO.level,coLevels().length-1);dbSave();coRun('Book speed changed.');};
   fitScoreWrap();
 }
@@ -1158,15 +1168,18 @@ function coStart(){
   const c=coRec();coSkipEmpty(c);
   CO={song:S.songId,mode:'',queue:[],improved:[],runFails:0,level:Math.max(0,Math.min(c.level-(c.phase===3&&c.level>0?1:0),coLevels().length-1))};
   if(c.tomorrow.length){CO.queue=c.tomorrow.slice();c.tomorrow=[];dbSave();coNextBar('Welcome back! First, the bars you saved for today.');return;}
-  if(!c.heard){coListen(undefined,undefined,()=>{c.heard=true;dbSave();coRun('Now your turn.');},'Listen to the whole song first 👂','It plays on your piano (or through the app). Follow the notes as they light up.','both');return;}
+  if(!c.heard){coListen(undefined,undefined,()=>{c.heard=true;dbSave();coRun('Now your turn.');},'Listen to the whole song first 👂','Follow the notes as they light up. Already know it a bit? Take the test to find your starting point.','both',false,[{t:'🎯 Test me on it',f:()=>coTestStart()}]);return;}
   coRun(c.phase===3&&c.level>0?'Warm-up: a little slower than last time.':'');
 }
-function coListen(from,to,next,title,sub,hands){
+function coListen(from,to,next,title,sub,hands,auto,extra){
   CO.mode='listen';CO.afterListen=next;
   coSetup(hands,from,to);
-  coShow(title,sub,[{t:'Skip',f:()=>pbStop()}]);
-  pbStart();if(!PB.on)coOnListened();
+  const play=()=>{pbStart();if(!PB.on){coOnListened();return;}
+    coShow(title,(sub?sub+' ':'')+(PB.out?`Playing on ${PB.out.name}.`:'Playing through the app.'),[{t:'■ Stop',f:()=>pbStop()}]);};
+  if(auto&&pickOutput()){play();return;}
+  coShow(title,(sub?sub+' ':'')+(pickOutput()?'':'<br><small>To hear it on your piano, tap <b>Connect piano</b> at the top first.</small>'),[{t:'▶ Play it',f:play},{t:'Skip',f:()=>coOnListened()}].concat(extra||[]));
 }
+function coListenRefresh(){const l=CO.last;coShow(l[0],(l[1]||'').replace(/<br><small>.*<\/small>/,''),l[2],l[3],l[4]);}
 function coOnListened(){const f=CO.afterListen;CO.afterListen=null;CO.mode='';if(f)f();}
 function coRun(note){
   const c=coRec(),ph=PH[c.phase];CO.mode='run';coSetup();
@@ -1187,6 +1200,7 @@ function coAnalyse(pauses){
   return bars;
 }
 function coAfterRun(){
+  if(CO.mode==='test'){coTestResult();return true;}
   const c=coRec(),bars=coAnalyse(CO.mode==='run'&&c.phase<3),bad=Object.keys(bars).map(Number);
   if(CO.mode==='fix'){coFixResult(!bad.length);return true;}
   if(CO.mode!=='run')return true;
@@ -1213,6 +1227,42 @@ function coSummary(resume){
   pbHalt();metStop();CO.mode='done';
   coShow('Nice practice today! 👏',coImproved()+'<br>Next time it picks up where you left off.',[{t:'Keep practising',f:resume||(()=>coRun(''))}]);
 }
+function coTestSetup(metOn,bpm){$('hands').value='both';syncHandBtns();$('met').checked=metOn;$('bpm').value=bpm;$('mFrom').value=1;$('mTo').value=S.score.measures.length;buildSteps({keep:true});}
+function coTestStart(){
+  if(!S)return;pbHalt();CO.afterListen=null;CO.mode='test';CO.tstage='notes';CO.tres={};
+  coTestSetup(false,60);
+  coShow('Test: play the whole song','Both hands, slowly, no metronome. Mistakes are fine — this just finds the right place for you to start.',[{t:'Cancel',f:()=>coStart()}]);
+}
+function coTestResult(){
+  const c=coRec(),L=coLevels(),book=L.length-1,steady=Math.max(0,Math.min(book,L.findIndex(b=>b>=60)<0?book:L.findIndex(b=>b>=60)));
+  const bars=coAnalyse(CO.tstage==='notes'),bad=Object.keys(bars).map(Number).sort((a,b)=>a-b),R=CO.tres;
+  const nBars=new Set(S.steps.map(x=>x.measure)).size;
+  if(CO.tstage==='notes'){
+    R.notes=!bad.length;
+    if(!bad.length){CO.tstage='beat';CO.tlevel=steady;coTestSetup(true,L[steady]);
+      coShow('✓ Every note, cleanly!',`Now the same with the metronome at ${coSpeedName(steady)} speed. Wait for the count-in.`,[{t:'Cancel',f:()=>coStart()}]);return;}
+    c.phase=bad.length>nBars/3?0:2;coSkipEmpty(c);c.level=0;
+    coTestDone(bars,bad,c.phase<2?'Let\'s learn it hand by hand, starting with the right hand.':`You know most of it! First we'll practise bar${bad.length>1?'s':''} ${bad.map(m=>m+1).join(', ')} with both hands.`);return;
+  }
+  const lvl=CO.tlevel;
+  if(!bad.length){
+    if(lvl===steady)R.steady=true;
+    if(lvl<book){CO.tlevel=book;coTestSetup(true,L[book]);coShow('✓ Nicely in time!','One more: book speed. Wait for the count-in.',[{t:'Cancel',f:()=>coStart()}]);return;}
+    R.steady=true;R.book=true;c.phase=3;c.level=book;
+    const day=new Date().toDateString();if(!c.cleanDays.includes(day))c.cleanDays.push(day);c.learned=c.cleanDays.length>=2;
+    coTestDone({},[],c.learned?'🏆 Song learned!':'🏆 You can already play it at book speed! Play it cleanly again on another day and it\'s learned.');return;
+  }
+  c.phase=3;c.level=lvl===steady?(bad.length<=2?Math.max(0,steady-1):0):steady;
+  coTestDone(bars,bad,`You know the notes. We'll practise with the beat, starting at ${coSpeedName(c.level)} speed.`);
+}
+function coTestDone(bars,bad,plan){
+  const c=coRec(),R=CO.tres;c.heard=true;dbSave();CO.level=c.level;CO.mode='done';
+  const line=(ok,t)=>`<div>${ok?'✅':'⬜'} ${t}</div>`;
+  const sum=line(R.notes,'All the notes, both hands')+line(R.steady,'In time at steady speed')+line(R.book,'At book speed');
+  coShow('Test result',sum+`<div style="margin-top:6px"><b>${plan}</b></div>`,[{t:'Start practising',f:()=>{
+    if(R.book){coRun('');return;}
+    if(bad.length&&c.phase>=2){CO.queue=bad.slice();CO.info=bars;coNextBar('');}else coRun('');}}]);
+}
 function coRunClean(){
   const c=coRec();CO.runFails=0;chime();
   if(c.phase<2){c.phase++;coSkipEmpty(c);dbSave();coRun(c.phase===1?'🎉 Clean! Now the left hand.':'🎉 Clean! Now both hands together.');return;}
@@ -1229,7 +1279,7 @@ function coNextBar(note){
   CO.bar=bar;CO.barFails=0;CO.tries=0;CO.offered=false;
   CO.oneHand=c.phase>=2&&info.staffs&&info.staffs.size===1?([...info.staffs][0]?'left':'right'):null;
   const what=info.wrong?'a note or two':info.timing?'keeping in time':info.pause?'finding the notes':'';
-  coListen(bar,bar,()=>coFixStep(CO.oneHand?'hand':'bar'),`Bar ${bar+1} — listen first 👂`,what?`The tricky bit here was ${what}.`:'',PH[c.phase].hands);
+  coListen(bar,bar,()=>coFixStep(CO.oneHand?'hand':'bar'),`Bar ${bar+1} — listen first 👂`,what?`The tricky bit here was ${what}.`:'',PH[c.phase].hands,true);
   if(note&&CO.mode==='listen'){CO.last[3]=note;coShow(...CO.last);}
 }
 function coFixStep(step,note){CO.fixStep=step;CO.streak=0;coTry(note);}
@@ -1304,6 +1354,7 @@ addEventListener('paste',e=>{const it=[...(e.clipboardData?.items||[])].find(i=>
 addEventListener('pointerdown',()=>{try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();}catch(e){}},{once:true});
 addEventListener('resize',()=>{if(S){fitScoreWrap();moveCursor();}});
 dbLoad();
+try{if(localStorage.getItem('pianoTutor.midi')==='1')connectMidi();}catch(e){}
 (()=>{const l=DB.last;
   if(l&&l.startsWith('demo:')&&DEMOS[l.slice(5)]){$('demo').value=l.slice(5);loadXml(DEMOS[l.slice(5)](),l);}
   else if(l&&DB.songs[l]&&DB.songs[l].xml)loadXml(DB.songs[l].xml,l);
