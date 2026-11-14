@@ -339,7 +339,7 @@ function renderScore(){
     s.ms.forEach((mi,k)=>{
       const m=sc.measures[mi];const mw=m.width*s.scale;
       const nm=el('text',{x:x+3,y:s.tb-46,'font-size':12,fill:'#94a3b8'},svg);nm.textContent=mi+1;m.nmEl=nm;
-      let cx=x+12*s.scale;
+      m.x0=x;m.x1=x+mw;let cx=x+12*s.scale;
       m.cols.forEach(c=>{c.x=cx+ (c.w*s.scale)/2-4;cx+=c.w*s.scale;});
       m.cols.forEach(c=>drawColumn(svg,s,sc,mi,c,placed));
       x+=mw;
@@ -365,10 +365,7 @@ function drawColumn(svg,sys,sc,mi,col,placed){
   [0,1].forEach(st=>{
     const sn=here.filter(n=>n.staff===st);const pitched=sn.filter(n=>!n.rest);
     if(!pitched.length){ // rest
-      const r=sn.find(n=>n.rest);if(r){
-        const g={whole:'𝄻',half:'𝄼',quarter:'𝄽',eighth:'𝄾','16th':'𝄿'}[r.type]||'𝄽';
-        const bb=st===0?sys.tb:sys.bb;
-        const t=el('text',{x:col.x-6,y:bb-20,'font-size':30,fill:'#222','font-family':"'Noto Music','Bravura','Segoe UI Symbol','Apple Symbols',serif"},svg);t.textContent=g;}
+      const r=sn.find(n=>n.rest);if(r)drawRest(svg,sys,sc,mi,st,col,r);
       return;}
     const voices=[...new Set(pitched.map(n=>n.voice))];
     voices.forEach(v=>{
@@ -407,6 +404,21 @@ function drawColumn(svg,sys,sc,mi,col,placed){
       }
     });
   });
+}
+
+function drawRest(svg,sys,sc,mi,st,col,r){
+  const bb=st===0?sys.tb:sys.bb,m=sc.measures[mi];
+  const fullBar=r.dur>=m.lenQ-.001&&m.x0!==undefined;
+  const x=fullBar?(m.x0+m.x1)/2:col.x;
+  const g=el('g',{fill:'#222',stroke:'#222'},svg);
+  if(r.type==='whole'||fullBar)el('rect',{x:x-7,y:bb-30,width:14,height:5},g);       // hangs from the 4th line
+  else if(r.type==='half')el('rect',{x:x-7,y:bb-25,width:14,height:5},g);             // sits on the middle line
+  else if(r.type==='quarter')el('path',{d:`M${x-3} ${bb-34} l6 7 l-5 6 l6 7 c-5 -2 -8 1 -4 6 c-7 -3 -6 -9 0 -8 l-5 -5 l5 -6 z`,'stroke-width':1},g);
+  else{ // eighth / 16th
+    const flags=r.type==='16th'?2:1;
+    el('line',{x1:x+3,y1:bb-28,x2:x-2,y2:bb-12,'stroke-width':1.5},g);
+    for(let f=0;f<flags;f++){const y=bb-28+f*8;el('circle',{cx:x-3,cy:y,r:2.4,stroke:'none'},g);el('path',{d:`M${x-3} ${y+1} q3 2 6 -1`,fill:'none','stroke-width':1.4},g);}
+  }
 }
 
 // ---------- keep whole systems (treble + bass) visible ----------
@@ -515,12 +527,9 @@ function advance(){
   if(guidedLoop(done)){refreshAll();return;}
   const tm=timingOf(done);
   if(S.idx>=S.steps.length){finish();}
-  else{ // a key still held from the last step counts for a repeated note (common tone)
-    const nx=cur(),req=new Set(nx.notes.map(n=>n.midi)),kept=[];
-    done.notes.forEach(n=>{if(down.has(n.midi)&&req.has(n.midi)){S.hit.add(n.midi);kept.push(n.name);}});
-    let extra='';
-    if(kept.length)extra=S.hit.size===req.size?` Lift and press ${kept.join(' ')} again.`:` ${kept.join(' ')} is still held — that counts.`;
-    say('✓'+tm+extra,'good');
+  else{ // repeated notes must be struck again (tied notes are already left out of the steps)
+    const nx=cur(),held=nx.notes.filter(n=>down.has(n.midi)).map(n=>n.name);
+    say('✓'+tm+(held.length?` Lift and play ${held.join(' ')} again.`:''),'good');
   }
   refreshAll();
 }
