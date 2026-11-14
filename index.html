@@ -45,6 +45,14 @@ summary{cursor:pointer;font-weight:600}
 #handBtns button{border-radius:0;margin:0 -1px 0 0}#handBtns button:nth-of-type(1){border-radius:8px 0 0 8px}#handBtns button:last-child{border-radius:0 8px 8px 0}#handBtns button.on{background:#2563eb;color:#fff;border-color:#2563eb}
 .tr{display:flex;gap:10px;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9}.tr span{flex:1}
 textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
+.word{display:flex;gap:10px;align-items:flex-start;padding:8px;border-radius:8px;border:1px solid #f1f5f9;transition:background .3s}
+.word.flash{background:#ede9fe;border-color:#7c3aed}
+#wordList{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-top:10px}
+.wpic{flex:none;background:#fff}.tip{color:#7c3aed;font-size:13px;margin-top:3px}
+#quiz{margin-top:10px;padding:12px;border:2px solid #7c3aed;border-radius:10px;background:#faf5ff}
+.qcard{display:flex;gap:12px;align-items:center;font-size:16px;margin:6px 0 10px}
+.qopts{display:grid;grid-template-columns:1fr 1fr;gap:8px}.qopts button.right{background:#bbf7d0;border-color:#16a34a}.qopts button.wrong{background:#fecaca;border-color:#dc2626}
+#qfb{margin-top:10px}
 </style>
 </head>
 <body>
@@ -65,10 +73,11 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
     <label style="display:none">Hands <select id="hands"><option value="both">Both</option><option value="right">Right only</option><option value="left">Left only</option></select></label>
     <label>Measures <input type="number" id="mFrom" min="1" value="1"> to <input type="number" id="mTo" min="1" value="1"></label>
     <label><input type="checkbox" id="names"> Show note names</label>
+    <label><input type="checkbox" id="labels"> Label the score</label>
     <label><input type="checkbox" id="showKb" checked> Show keyboard</label>
     <label><input type="checkbox" id="sp"> Smart practice</label><label>clean runs needed <input type="number" id="spNeed" min="1" max="10" value="5"></label>
     <label><input type="checkbox" id="met"> Metronome</label><label>BPM <input type="number" id="bpm" min="30" max="200" value="60"></label>
-    <button id="btnRestart" class="primary">Restart</button>
+    <button id="btnPlay">▶ Play on piano</button> <button id="btnRestart" class="primary">Restart</button>
     <button id="btnBack">◀ Back</button><button id="btnSkip">Skip ▶</button>
   </div>
 
@@ -89,6 +98,13 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
       <button id="btnExport">Export</button> <button id="btnImport">Import</button>
     </details>
   </details>
+  <details id="words">
+    <summary>📖 Music words — learn the names of things on the page</summary>
+    <p style="font-size:13px;color:#475569">Tick <b>Label the score</b> above to see these marked on the music; tap a label to jump to its explanation here.</p>
+    <button id="btnQuiz" class="primary">Test me</button> <span id="wordProg" style="font-size:13px;color:#7c3aed"></span>
+    <div id="quiz" style="display:none"></div>
+    <div id="wordList"></div>
+  </details>
   <details>
     <summary>Reference image (paste a screenshot to compare against the rendered score)</summary>
     <p>Click here and paste (Ctrl/⌘+V) a screenshot, or choose a file: <input type="file" id="imgFile" accept="image/*"></p>
@@ -105,6 +121,7 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
       <li>Otherwise use <b>Chrome or Edge</b> (laptop) or Chrome on Android.</li>
       <li><b>Mac:</b> put the piano in Bluetooth pairing mode, then Audio MIDI Setup → Window → Show MIDI Studio → Bluetooth icon → Connect. Then press "Connect piano" here.</li>
       <li><b>Windows:</b> pair it in Settings → Bluetooth. Support for Bluetooth MIDI in Chrome on Windows can be hit-and-miss; a USB cable is the reliable fallback.</li>
+      <li><b>Hear it first:</b> press “▶ Play on piano” and the song plays on your Roland through the Bluetooth MIDI connection, at the BPM setting, for the hands and measures you've chosen. Without a piano connected it plays through the app instead. Your key presses aren't marked while it plays.</li>
       <li>No piano handy? Click the on-screen keys, or use the computer keys A W S E D F T G Y H U J K (C4–C5; Z/X shift octave).</li>
       <li>Scores: export <b>MusicXML</b> (.musicxml / .mxl) from MuseScore or similar. For a photo/PDF/screenshot, send it to Claude to transcribe into MusicXML.</li>
     </ul>
@@ -331,7 +348,7 @@ function renderScore(){
         const y=bb-(pos-(clef==='F'?18:30))*HS;
         const t=el('text',{x:kx+i*11,y,'font-size':20,'text-anchor':'middle','dominant-baseline':'central',fill:'#222'},svg);t.textContent=fl?'♭':'♯';});}
       kx+=11*Math.abs(m0.fifths);}
-    if(m0.showTime){[[s.tb],[s.bb]].forEach(([bb])=>{
+    if(m0.showTime){s.tsX=kx+6;[[s.tb],[s.bb]].forEach(([bb])=>{
       const a=el('text',{x:kx+6,y:bb-22,'font-size':26,'font-weight':700,'text-anchor':'middle',fill:'#222','font-family':'serif'},svg);a.textContent=m0.beats;
       const b=el('text',{x:kx+6,y:bb-2,'font-size':26,'font-weight':700,'text-anchor':'middle',fill:'#222','font-family':'serif'},svg);b.textContent=m0.beatType;});}
     // measures
@@ -356,6 +373,7 @@ function renderScore(){
     el('path',{d:`M${n.x} ${y} Q${(n.x+x2)/2} ${y+10} ${x2} ${y}`,stroke:'#555',fill:'none','stroke-width':1.3},svg);
   });
   svg.appendChild(S.ghostG=el('g',{},svg));
+  S.labelG=el('g',{},svg);drawLabels();
   markMeasures();
 }
 
@@ -365,7 +383,7 @@ function drawColumn(svg,sys,sc,mi,col,placed){
   [0,1].forEach(st=>{
     const sn=here.filter(n=>n.staff===st);const pitched=sn.filter(n=>!n.rest);
     if(!pitched.length){ // rest
-      const r=sn.find(n=>n.rest);if(r)drawRest(svg,sys,sc,mi,st,col,r);
+      const r=sn.find(n=>n.rest);if(r){r.sys=si;drawRest(svg,sys,sc,mi,st,col,r);}
       return;}
     const voices=[...new Set(pitched.map(n=>n.voice))];
     voices.forEach(v=>{
@@ -409,7 +427,7 @@ function drawColumn(svg,sys,sc,mi,col,placed){
 function drawRest(svg,sys,sc,mi,st,col,r){
   const bb=st===0?sys.tb:sys.bb,m=sc.measures[mi];
   const fullBar=r.dur>=m.lenQ-.001&&m.x0!==undefined;
-  const x=fullBar?(m.x0+m.x1)/2:col.x;
+  const x=fullBar?(m.x0+m.x1)/2:col.x;r.rx=x;
   const g=el('g',{fill:'#222',stroke:'#222'},svg);
   if(r.type==='whole'||fullBar)el('rect',{x:x-7,y:bb-30,width:14,height:5},g);       // hangs from the 4th line
   else if(r.type==='half')el('rect',{x:x-7,y:bb-25,width:14,height:5},g);             // sits on the middle line
@@ -434,12 +452,12 @@ function fitScoreWrap(){
 // ---------- practice engine ----------
 const bad=st=>st.errs>0||!!st.hadErr;
 function buildSteps(ov){
-  ov=ov||{};S.drillRun=ov.from!==undefined;S.loop=null;
+  ov=ov||{};pbHalt();S.drillRun=ov.from!==undefined;S.loop=null;
   if(!ov.keep)S.sp={phase:'full',queue:[],streak:0,fixed:[],fullRuns:0};
   const sc=S.score,hand=$('hands').value;
   let from=Math.max(1,+$('mFrom').value||1)-1,to=Math.min(sc.measures.length,+$('mTo').value||sc.measures.length)-1;
   if(ov.from!==undefined){from=ov.from;to=ov.to;}
-  sc.notes.forEach(n=>{n.step=null;n.inRange=false;n.missed=false;n.hadMiss=false;});
+  sc.notes.forEach(n=>{n.stp=null;n.inRange=false;n.missed=false;n.hadMiss=false;});
   const map=new Map();
   sc.notes.forEach(n=>{
     if(n.rest||n.measure<from||n.measure>to)return;
@@ -447,7 +465,7 @@ function buildSteps(ov){
     n.inRange=true;
     if(n.tieStop)return;
     const k=n.t.toFixed(4);if(!map.has(k))map.set(k,{t:n.t,notes:[],measure:n.measure,errs:0});
-    const st=map.get(k);st.notes.push(n);n.step=st;
+    const st=map.get(k);st.notes.push(n);n.stp=st;
   });
   S.steps=[...map.values()].sort((a,b)=>a.t-b.t);
   S.idx=0;S.hit=new Set();S.errTotal=0;S.finished=false;
@@ -461,7 +479,7 @@ function refreshStyles(){
     if(!n.el)return;let c='nh';
     if(!n.inRange)c+=' dim';
     else if(n.tieStop)c+=' tied';
-    else{const st=n.step,i=S.steps.indexOf(st);
+    else{const st=n.stp,i=S.steps.indexOf(st);
       if(st&&i<S.idx)c+=n.missed?' err':(n.hadMiss&&!(S.loop&&S.loop.measure===st.measure))?' fixed':' ok';
       else if(st===cur())c+=S.hit.has(n.midi)?' ok':(n.missed?' err':' cur');}
     n.el.setAttribute('class',c);
@@ -505,7 +523,7 @@ function describeMiss(played,st){
 }
 function noteOn(m){
   down.add(m);
-  if(!S||!S.steps)return;
+  if(!S||!S.steps||PB.on)return;
   keyMark.set(m,'pend');
   const st=cur();
   if(!st){keyMark.set(m,'ok');refreshKeys();return;}
@@ -771,7 +789,7 @@ function refreshInputs(){
   attached.forEach(i=>{try{i.onmidimessage=null;i.removeEventListener&&i.removeEventListener('midimessage',onMidi);}catch(e){}});
   attached=ins;
   ins.forEach(i=>{try{i.onmidimessage=onMidi;i.addEventListener&&i.addEventListener('midimessage',onMidi);const o=i.open&&i.open();o&&o.catch&&o.catch(()=>{});}catch(e){console.error(e);}});
-  setStatus(true,'MIDI: '+ins.map(i=>i.name).join(' + '));
+  setStatus(true,'MIDI: '+ins.map(i=>i.name).join(' + '));pbLabel();
 }
 
 $('btnMidi').onclick=connectMidi;
@@ -863,6 +881,166 @@ document.querySelectorAll('#handBtns button').forEach(b=>b.onclick=()=>{setHands
   if(S)say(b.dataset.h==='both'?'Both hands.':`${b.dataset.h==='right'?'Right':'Left'} hand only — the other hand is greyed out.`);});
 $('seq').onchange=()=>{if(!S)return;if($('seq').checked){setHands('right');say('Guided practice: right hand first, then left, then both. Any bar with a mistake repeats until you play it cleanly '+spNeed()+' times in a row.');}};
 syncHandBtns();
+
+// ---------- music words: glossary, quiz and score labels ----------
+const MF="'Noto Music','Bravura','Segoe UI Symbol','Apple Symbols',serif";
+const mini=(inner,hl)=>`<svg viewBox="0 -2 120 62" width="120" height="62">${[12,20,28,36,44].map(y=>`<line x1="4" x2="116" y1="${y}" y2="${y}" stroke="${y===hl?'#7c3aed':'#94a3b8'}" stroke-width="${y===hl?2:1}"/>`).join('')}${inner}</svg>`;
+const hd=(x,y,o)=>`<ellipse cx="${x}" cy="${y}" rx="5" ry="3.7" transform="rotate(-20 ${x} ${y})" fill="${o?'#fff':'#222'}" stroke="#222" stroke-width="1.3"/>`;
+const sm=(x,y,len)=>`<line x1="${x+4.6}" x2="${x+4.6}" y1="${y}" y2="${y-(len||26)}" stroke="#222" stroke-width="1.3"/>`;
+const lg=(x,y)=>`<line x1="${x-9}" x2="${x+9}" y1="${y}" y2="${y}" stroke="#222"/>`;
+const gl=(x,y,s,c,fs)=>`<text x="${x}" y="${y}" font-size="${fs||18}" text-anchor="middle" dominant-baseline="central" fill="#222" font-family="${MF}">${c}</text>`;
+const WORDS=[
+ {t:'Staff',a:'stave',d:'The 5 lines and 4 spaces that notes sit on. Higher on the lines = higher sound.',tip:'Five lines — like the five fingers on your hand.',pic:mini('')},
+ {t:'Grand staff',d:'Two staves joined by a brace: treble on top, bass underneath. Piano music uses it so both hands can be read together.',tip:'Top staff = right hand, bottom staff = left hand (usually).'},
+ {t:'Treble clef',a:'G clef',d:'The curly sign at the start of the top staff. Its curl wraps around the 2nd line, which is the G above middle C. Used for higher notes — usually the right hand.',tip:'The curl hugs the G line (highlighted).',pic:mini(gl(22,30,0,'𝄞',46),36)},
+ {t:'Bass clef',a:'F clef',d:'The sign at the start of the bottom staff. Its two dots sit either side of the 4th line, which is the F below middle C. Used for lower notes — usually the left hand.',tip:'The two dots hug the F line (highlighted).',pic:mini(gl(22,26,0,'𝄢',34),20)},
+ {t:'Middle C',d:'The C closest to the middle of the keyboard. On paper it sits on a short line just below the treble staff (or just above the bass staff).',tip:'Home base — the meeting point of both hands.',pic:mini(lg(60,52)+hd(60,52,0)+sm(60,52))},
+ {t:'Ledger line',d:'A short extra line for a note that is too high or too low to fit on the staff.',tip:'A little ladder rung added above or below the staff.',pic:mini(lg(45,4)+hd(45,4,0)+lg(80,52)+hd(80,52,0))},
+ {t:'Bar line',d:'A straight up-and-down line that divides the staff into measures.',tip:'Bars keep the beats in tidy boxes.',pic:mini('<line x1="60" x2="60" y1="12" y2="44" stroke="#222" stroke-width="1.5"/>')},
+ {t:'Measure',a:'bar',d:'The space between two bar lines. Each one holds the number of beats the time signature asks for.',tip:'In 4/4, count 1-2-3-4 in every measure.'},
+ {t:'Double bar line',d:'A thin line and a thick line together at the very end of the piece.',tip:'Thick line = full stop.',pic:mini('<line x1="100" x2="100" y1="12" y2="44" stroke="#222" stroke-width="1.2"/><rect x="105" y="12" width="4" height="32" fill="#222"/>')},
+ {t:'Time signature',d:'The two numbers at the start. Top number = how many beats in each measure; bottom number = which note gets one beat (4 means a quarter note).',tip:'Top = how many; bottom = what kind.',pic:mini('<text x="60" y="27" font-size="19" font-weight="700" text-anchor="middle" font-family="serif">4</text><text x="60" y="43" font-size="19" font-weight="700" text-anchor="middle" font-family="serif">4</text>')},
+ {t:'Beat',d:'The steady pulse of the music — what you tap your foot to and count.',tip:'The metronome clicks the beat for you.'},
+ {t:'Tempo',d:'How fast the music goes. Written in words above the music (“Moderately fast”) or as BPM — beats per minute.',tip:'Tempo = time = speed.'},
+ {t:'Whole note',d:'A hollow note with no stem. Lasts 4 beats.',tip:'Whole = a whole measure of 4/4.',pic:mini(hd(60,28,1))},
+ {t:'Half note',d:'A hollow note with a stem. Lasts 2 beats.',tip:'Half of a whole note.',pic:mini(hd(60,32,1)+sm(60,32))},
+ {t:'Quarter note',d:'A filled-in note with a stem. Lasts 1 beat.',tip:'Four of them fill a 4/4 measure.',pic:mini(hd(60,32,0)+sm(60,32))},
+ {t:'Eighth note',d:'A filled-in note with a stem and a flag. Lasts half a beat, so two fit in one beat.',tip:'The flag makes it fly by twice as fast.',pic:mini(hd(60,36,0)+sm(60,36)+'<path d="M64.6 10 c0 8 10 9 6 22" stroke="#222" fill="none" stroke-width="1.5"/>')},
+ {t:'Dotted note',d:'A dot after a note adds half its length again. A dotted half note lasts 3 beats.',tip:'Dot = “and half as much again”.',pic:mini(hd(55,32,1)+sm(55,32)+'<circle cx="67" cy="30" r="1.8" fill="#222"/>')},
+ {t:'Rest',d:'A sign for silence. Each note length has a matching rest. The whole rest hangs down from the 4th line; the half rest sits on the middle line.',tip:'Half rest looks like a hat; whole rest looks like a hole.',pic:mini('<rect x="34" y="20" width="14" height="5" fill="#222"/><rect x="74" y="23" width="14" height="5" fill="#222"/>')},
+ {t:'Tie',d:'A curved line joining two notes of the same pitch. Play the first note and keep holding it for both lengths — don\'t play it again.',tip:'Tie = same note, one press, hold on.',pic:mini(hd(40,32,1)+sm(40,32)+hd(85,32,1)+sm(85,32)+'<path d="M42 38 Q62 48 83 38" stroke="#222" fill="none" stroke-width="1.3"/>')},
+ {t:'Chord',d:'Three or more notes played at the same time. Mary Ann\'s right hand plays G7 and C chords.',tip:'Notes stacked like a snowman = play them together.',pic:mini(lg(60,52)+hd(60,52,0)+hd(60,44,0)+hd(60,36,0)+sm(60,52,40))},
+ {t:'Chord symbol',d:'A letter written above the music (like C or G7) that names the chord to play there.',tip:'The letter is the chord\'s name tag.'},
+ {t:'Melody',d:'The tune — the part you would sing or hum. In Mary Ann the left hand plays the melody (the words follow it).',tip:'Melody = the part you\'d sing.'},
+ {t:'Accompaniment',d:'The supporting part played under the melody, often chords. In Mary Ann the right hand\'s chords are the accompaniment.',tip:'It accompanies (goes along with) the tune.'},
+ {t:'Lyrics',d:'The words of a song, written under the notes.',tip:'Sing them as you play to feel the rhythm.'},
+ {t:'Finger numbers',d:'Small numbers by the notes telling you which finger to use: 1 = thumb, 2 = pointer, 3 = middle, 4 = ring, 5 = pinky. Same on both hands.',tip:'Thumbs are always 1.'},
+ {t:'Dynamics',d:'Signs for how loud or soft to play: p (piano) = soft, mf (mezzo forte) = medium loud, f (forte) = loud.',tip:'p = peaceful, f = forceful.'},
+ {t:'Sharp',d:'♯ before a note means play the very next key to the right (higher) — often a black key.',tip:'Sharp goes up, like a sharp point.',pic:mini(gl(48,28,0,'♯',20)+hd(62,28,0))},
+ {t:'Flat',d:'♭ before a note means play the very next key to the left (lower).',tip:'Flat goes down, like a flat tyre.',pic:mini(gl(48,26,0,'♭',22)+hd(62,28,0))},
+ {t:'Natural',d:'♮ cancels a sharp or flat, so you play the plain white key.',tip:'Back to natural — no sharp, no flat.',pic:mini(gl(48,28,0,'♮',20)+hd(62,28,0))},
+ {t:'Key signature',d:'Sharps or flats just after the clef. They apply to those notes for the whole piece. No sharps or flats = key of C (all white keys).',tip:'Set once at the start, works all the way through.',pic:mini(gl(40,12,0,'♯',18))},
+ {t:'Octave',d:'The distance from one note to the next note with the same letter name, 8 white keys away (C to the next C).',tip:'Octo = eight.'},
+];
+let WS={};try{WS=JSON.parse(localStorage.getItem('pianoTutor.words')||'{}');}catch(e){}
+const wSave=()=>{try{localStorage.setItem('pianoTutor.words',JSON.stringify(WS));}catch(e){}};
+const learned=w=>(WS[w.t]||0)>=3;
+function wordsProgress(){$('wordProg').textContent=`${WORDS.filter(learned).length}/${WORDS.length} words learned (3 right in a row each)`;}
+function renderWords(){
+  $('wordList').innerHTML=WORDS.map((w,i)=>`<div class="word" id="word-${i}">${w.pic?`<div class="wpic">${w.pic}</div>`:''}<div><b>${w.t}</b>${w.a?` <small>(${w.a})</small>`:''}${learned(w)?' <small style="color:#16a34a">✓ learned</small>':''}<div>${w.d}</div><div class="tip">💡 ${w.tip}</div></div></div>`).join('');
+  wordsProgress();
+}
+function showTerm(t){const i=WORDS.findIndex(w=>w.t===t);if(i<0)return;$('words').open=true;const c=$('word-'+i);
+  c.scrollIntoView({behavior:'smooth',block:'center'});c.classList.remove('flash');void c.offsetWidth;c.classList.add('flash');}
+let Q=null;
+function quizNext(){
+  const pool=WORDS.filter(w=>!learned(w)),src=pool.length?pool:WORDS;let w;
+  do{w=src[Math.floor(Math.random()*src.length)];}while(src.length>1&&Q&&w===Q.w);
+  const opts=[w,...WORDS.filter(o=>o!==w).sort(()=>Math.random()-.5).slice(0,3)].sort(()=>Math.random()-.5);
+  const hide=s=>s.replace(new RegExp(w.t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),'_____');
+  Q={w};
+  $('quiz').innerHTML=`<div style="font-size:13px;color:#64748b">What's this called?${pool.length?'':' (all learned — revision round)'}</div><div class="qcard">${w.pic?`<div class="wpic">${w.pic}</div>`:''}<div>${hide(w.d)}</div></div><div class="qopts">${opts.map(o=>`<button data-t="${o.t}">${o.t}</button>`).join('')}</div><div id="qfb"></div>`;
+}
+$('quiz').onclick=e=>{
+  const b=e.target.closest('button[data-t]');if(!b||!Q||Q.done)return;Q.done=true;
+  const ok=b.dataset.t===Q.w.t;WS[Q.w.t]=ok?(WS[Q.w.t]||0)+1:0;wSave();renderWords();
+  $('quiz').querySelectorAll('button[data-t]').forEach(x=>{if(x.dataset.t===Q.w.t)x.classList.add('right');else if(x===b)x.classList.add('wrong');});
+  $('qfb').innerHTML=(ok?`✓ Yes — <b>${Q.w.t}</b>! ${learned(Q.w)?'Learned 🎉':`(${WS[Q.w.t]}/3 in a row)`} `:`✗ It's <b>${Q.w.t}</b>. `)+`💡 ${Q.w.tip} <button id="qNext" class="primary">Next</button>`;
+  $('qNext').onclick=quizNext;
+};
+$('btnQuiz').onclick=()=>{const q=$('quiz');const show=q.style.display==='none';q.style.display=show?'block':'none';$('btnQuiz').textContent=show?'Stop test':'Test me';if(show)quizNext();};
+renderWords();
+
+// labels drawn on the score (first place each thing appears); tap one to read about it
+function drawLabels(){
+  const g=S&&S.labelG;if(!g)return;g.innerHTML='';if(!$('labels').checked)return;
+  const sc=S.score,sys=S.systems,s0=sys[0],items=[];
+  const add=(t,si,row,x,y)=>{if(sys[si]&&isFinite(x)&&isFinite(y))items.push({t,si,row,x,y});};
+  const m0=sc.measures[s0.ms[0]],mL=sc.measures[sc.measures.length-1];
+  add('Treble clef',0,'top',L+20,s0.tb-30);add('Bass clef',0,'bot',L+18,s0.bb-22);
+  if(m0.fifths)add('Key signature',0,'top',L+44,s0.tb-20);
+  if(s0.tsX)add('Time signature',0,'top',s0.tsX,s0.tb-30);
+  const mM=sc.measures[s0.ms[1]!=null?s0.ms[1]:s0.ms[0]];add('Measure',0,'top',(mM.x0+mM.x1)/2+20,s0.tb-40);add('Bar line',0,'bot',m0.endX,s0.bb-6);
+  add('Staff',0,'top',s0.end-30,s0.tb-30);
+  const lastSi=sys.findIndex(s=>s.ms.includes(sc.measures.length-1));add('Double bar line',lastSi,'bot',mL.endX,sys[lastSi]?sys[lastSi].bb-6:NaN);
+  const pitched=sc.notes.filter(n=>!n.rest&&n.sys!=null).sort((a,b)=>a.t-b.t),row=n=>n.staff?'bot':'top',ny=n=>yAt(sys[n.sys],n.staff,n.pos);
+  const ch=pitched.find(n=>pitched.some(o=>o!==n&&o.staff===n.staff&&Math.abs(o.t-n.t)<.001));
+  if(ch)add('Chord',ch.sys,row(ch),ch.x,ny(ch));
+  const rs=sc.notes.find(n=>n.rest&&n.rx!=null);if(rs)add('Rest',rs.sys,row(rs),rs.rx,(rs.staff?sys[rs.sys].bb:sys[rs.sys].tb)-28);
+  const ti=pitched.find(n=>n.tieStart);if(ti)add('Tie',ti.sys,row(ti),ti.x+14,ny(ti)+12);
+  const ld=pitched.find(n=>{const b=posBase(n.staff);return n.pos<=b-2||n.pos>=b+10;});if(ld)add('Ledger line',ld.sys,row(ld),ld.x+9,ny(ld)-(ld.pos%2?5:0));
+  const mc=pitched.find(n=>n.midi===60);if(mc)add('Middle C',mc.sys,row(mc),mc.x,ny(mc));
+  const groups={};items.forEach(it=>(groups[it.si+it.row]=groups[it.si+it.row]||[]).push(it));
+  Object.values(groups).forEach(list=>{
+    list.sort((a,b)=>a.x-b.x);let right=-1e9;
+    list.forEach(it=>{
+      const s=sys[it.si],w=it.t.length*6.4+16,ry=it.row==='top'?s.y+12:s.bb+30;
+      const cx=Math.min(Math.max(it.x,right+w/2+4,L+w/2),W-R-w/2);right=cx+w/2;
+      const a=el('g',{},g);a.style.cursor='pointer';
+      el('line',{x1:cx,y1:ry+(it.row==='top'?8:-8),x2:it.x,y2:it.y,stroke:'#7c3aed','stroke-width':1,'stroke-dasharray':'3 2'},a);
+      el('circle',{cx:it.x,cy:it.y,r:2.6,fill:'#7c3aed'},a);
+      el('rect',{x:cx-w/2,y:ry-8,width:w,height:16,rx:8,fill:'#ede9fe',stroke:'#7c3aed'},a);
+      const tx=el('text',{x:cx,y:ry+.5,'font-size':11,'font-weight':600,'text-anchor':'middle','dominant-baseline':'central',fill:'#5b21b6'},a);tx.textContent=it.t;
+      a.addEventListener('click',()=>showTerm(it.t));
+    });
+  });
+}
+$('labels').onchange=()=>{drawLabels();try{localStorage.setItem('pianoTutor.labels',$('labels').checked?'1':'0');}catch(e){}};
+try{$('labels').checked=localStorage.getItem('pianoTutor.labels')==='1';}catch(e){}
+
+// ---------- playback: play the score on the piano (MIDI out) or through the app ----------
+const PB={on:false,timers:[],active:new Set(),voices:new Set()};
+function listOutputs(){const a=[];if(midiAccess&&midiAccess.outputs)midiAccess.outputs.forEach(o=>a.push(o));return a;}
+function pickOutput(){const outs=listOutputs();if(!outs.length)return null;const nm=(attached[0]&&attached[0].name)||'';return outs.find(o=>o.name===nm)||outs[0];}
+function pbLabel(){const b=$('btnPlay');if(b)b.textContent=PB.on?'■ Stop':(pickOutput()?'▶ Play on piano':'▶ Play (app sound)');}
+function pbEvents(){ // one sounding note per tie chain, for the current hands and measures
+  const ns=S.score.notes,ev=[];
+  ns.forEach(n=>{
+    if(!n.inRange||n.rest||n.tieStop)return;
+    let dur=n.dur,c=n;
+    while(c.tieStart){const nx=ns.find(o=>o.tieStop&&o.midi===c.midi&&o.staff===c.staff&&Math.abs(o.t-(c.t+c.dur))<.01);if(!nx)break;dur+=nx.dur;c=nx;}
+    ev.push({t:n.t,dur,midi:n.midi,st:n.stp});
+  });
+  return ev.sort((a,b)=>a.t-b.t);
+}
+function pbSynth(m,t1,t2){
+  const o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=440*Math.pow(2,(m-69)/12);
+  g.gain.setValueAtTime(.0001,t1);g.gain.exponentialRampToValueAtTime(.15,t1+.01);
+  g.gain.setValueAtTime(.15,Math.max(t1+.01,t2-.05));g.gain.exponentialRampToValueAtTime(.0001,t2);
+  o.connect(g).connect(ac.destination);o.start(t1);o.stop(t2+.02);PB.voices.add(o);o.onended=()=>PB.voices.delete(o);
+}
+function pbStart(){
+  if(!S||!S.steps||!S.steps.length)return;
+  const ev=pbEvents();if(!ev.length)return;
+  metStop();try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();}catch(e){}
+  const out=pickOutput(),spb=spbOf(),t0=ev[0].t,start=performance.now()+300,acStart=ac?ac.currentTime+.3:0;
+  PB.on=true;PB.out=out;S.idx=0;S.hit=new Set();$('summary').style.display='none';
+  let i=0;
+  const tick=()=>{
+    const now=performance.now();
+    while(i<ev.length){
+      const e=ev[i],on=start+(e.t-t0)*spb*1000;if(on>now+150)break;
+      const off=on+Math.max(.05,e.dur*spb-.04)*1000;
+      try{if(out){out.send([0x90,e.midi,80],on);out.send([0x80,e.midi,0],off);}else if(ac)pbSynth(e.midi,acStart+(on-start)/1000,acStart+(off-start)/1000);}catch(err){console.error(err);}
+      PB.active.add(e.midi);
+      PB.timers.push(setTimeout(()=>{const k=S.steps.indexOf(e.st);if(PB.on&&k>=0&&k!==S.idx){S.idx=k;S.hit=new Set();refreshAll();}},Math.max(0,on-now)));
+      i++;
+    }
+    if(i>=ev.length){clearInterval(PB.iv);const last=ev[ev.length-1];
+      PB.timers.push(setTimeout(()=>pbStop('done'),Math.max(0,start+(last.t+last.dur-t0)*spb*1000-now)+300));}
+  };
+  PB.iv=setInterval(tick,25);tick();pbLabel();refreshAll();
+  say(out?`▶ Playing on ${out.name} at ${$('bpm').value} BPM — listen and follow the highlighted notes.`:`▶ Playing through the app at ${$('bpm').value} BPM (connect your piano to hear it there).`);
+}
+function pbHalt(){
+  if(!PB.on)return;PB.on=false;clearInterval(PB.iv);PB.timers.forEach(clearTimeout);PB.timers=[];
+  const out=PB.out;
+  if(out){try{out.clear&&out.clear();}catch(e){}
+    try{PB.active.forEach(m=>out.send([0x80,m,0]));out.send([0xB0,123,0]);}catch(e){}}
+  PB.voices.forEach(o=>{try{o.stop();}catch(e){}});PB.voices.clear();PB.active.clear();pbLabel();
+}
+function pbStop(why){pbHalt();buildSteps();say(why==='done'?'Finished playing — now you try. Press the highlighted note.':'Playback stopped.');}
+$('btnPlay').onclick=()=>PB.on?pbStop():pbStart();
 
 // ---------- loading ----------
 function loadXml(text,id){
