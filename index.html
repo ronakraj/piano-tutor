@@ -59,7 +59,7 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
   <div class="bar">
     <label>Load score <input type="file" id="file" accept=".musicxml,.xml,.mxl"></label>
     <label>Saved <select id="saved"><option value="">Your saved songs…</option></select></label>
-    <label>Demo <select id="demo"><option value="jingle">Jingle Bells (Alfred's p.30)</option><option value="ode">Ode to Joy (hands together)</option><option value="chords">Chords I–IV–V–I</option></select></label>
+    <label>Demo <select id="demo"><option value="jingle">Jingle Bells (Alfred's p.30)</option><option value="maryann">Mary Ann (Alfred's p.37)</option><option value="ode">Ode to Joy (hands together)</option><option value="chords">Chords I–IV–V–I</option></select></label>
     <span id="handBtns" style="display:inline-flex;gap:0;align-items:center"><b style="font-size:13px;color:#475569;margin-right:6px">Hands</b><button data-h="both">Both</button><button data-h="right">Right</button><button data-h="left">Left</button></span>
     <label><input type="checkbox" id="seq"> Guided: right → left → both, repeating any bar with a mistake</label>
     <label style="display:none">Hands <select id="hands"><option value="both">Both</option><option value="right">Right only</option><option value="left">Left only</option></select></label>
@@ -201,13 +201,13 @@ function buildXML(title,fifths,measures){
   const DUR={w:8,h:4,q:2,e:1},TYPE={w:'whole',h:'half',q:'quarter',e:'eighth'};
   const toXml=(str,staff)=>{let total=0,out='';
     for(const tok of str.trim().split(/\s+/)){
-      const [ps,d]=tok.split(':');const dot=d.endsWith('.');const base=d.replace('.','');
+      const [ps0,d0]=tok.split(':');const tS=ps0[0]==='_',tB=d0.endsWith('~'),ps=ps0.replace(/^_/,''),d=d0.replace('~','');const dot=d.endsWith('.');const base=d.replace('.','');
       const dur=DUR[base]*(dot?1.5:1);total+=dur;
       ps.split('+').forEach((p,i)=>{
         out+='<note>'+(i?'<chord/>':'');
         if(p==='r')out+='<rest/>';else{const m=/^([A-G])([#b]?)(\d)$/.exec(p);
           out+=`<pitch><step>${m[1]}</step>${m[2]?`<alter>${m[2]==='#'?1:-1}</alter>`:''}<octave>${m[3]}</octave></pitch>`;}
-        out+=`<duration>${dur}</duration><type>${TYPE[base]}</type>${dot?'<dot/>':''}<staff>${staff}</staff></note>`;
+        out+=`<duration>${dur}</duration>${tS?'<tie type="stop"/>':''}${tB?'<tie type="start"/>':''}<type>${TYPE[base]}</type>${dot?'<dot/>':''}<staff>${staff}</staff></note>`;
       });}
     return [out,total];};
   let x=`<?xml version="1.0"?><score-partwise><work><work-title>${title}</work-title></work><part-list><score-part id="P1"/></part-list><part id="P1">`;
@@ -229,6 +229,15 @@ const DEMOS={
     {rh:'E4:q G4:q C4:q D4:q',lh:'C3+G3:w'},{rh:'E4:w',lh:'C3+G3:w'},
     {rh:'F4:q F4:q F4:q F4:q',lh:'D3+G3:w'},{rh:'F4:q E4:q E4:q E4:q',lh:'C3+G3:w'},
     {rh:'G4:q G4:q F4:q D4:q',lh:'D3+G3:h G3:h'},{rh:'C4:w',lh:'C3+G3:w'}]),
+  maryann:()=>{const G7='B3+F4+G4',C='C4+E4+G4';return buildXML('Mary Ann',0,[
+    {rh:'r:w',lh:'E3:h G3:h'},{rh:'r:w',lh:'C3:h E3:h'},
+    {rh:'r:w',lh:'E3:q D3:q F3:h~'},{rh:`${G7}:q ${G7}:q ${G7}:h`,lh:'_F3:w'},
+    {rh:'r:w',lh:'D3:h F3:q F3:q'},{rh:'r:w',lh:'B2:h D3:h'},
+    {rh:'r:w',lh:'D3:q C3:q E3:h~'},{rh:`${C}:q ${C}:q ${C}:h`,lh:'_E3:w'},
+    {rh:'r:w',lh:'E3:q E3:q G3:q G3:q'},{rh:'r:w',lh:'C3:h E3:q E3:q'},
+    {rh:'r:w',lh:'E3:q D3:q F3:h~'},{rh:`${G7}:q ${G7}:q ${G7}:h`,lh:'_F3:w'},
+    {rh:'r:w',lh:'D3:h F3:q F3:q'},{rh:'r:w',lh:'B2:h D3:h'},
+    {rh:'r:w',lh:'D3:q C3:q C3:h~'},{rh:`${C}:q ${C}:q ${C}:h`,lh:'_C3:w'}]);},
   ode:()=>buildXML('Ode to Joy',0,[
     {rh:'E4:q E4:q F4:q G4:q',lh:'C3:w'},{rh:'G4:q F4:q E4:q D4:q',lh:'G2:w'},
     {rh:'C4:q C4:q D4:q E4:q',lh:'C3:w'},{rh:'E4:q. D4:e D4:h',lh:'G2:h G2:h'},
