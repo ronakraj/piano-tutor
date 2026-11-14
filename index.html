@@ -176,6 +176,10 @@ header{background:#292524}header select,header button{background:#44403c;color:#
       <li>Scores: export <b>MusicXML</b> (.musicxml / .mxl) from MuseScore or similar. For a photo/PDF/screenshot, send it to Claude to transcribe into MusicXML.</li>
     </ul>
     <p class="hint">Piano status: <span id="midiText">not connected</span></p>
+    <label>Play songs on <select id="outSel"><option value="auto">Automatic (recommended)</option></select></label>
+    <p><button id="btnTestSound" class="primary">🔊 Test sound on piano</button></p>
+    <p class="hint" id="testRes"></p>
+    <p class="hint" id="outInfo"></p>
     <p><select id="midiSel" style="display:none"></select> <span id="midiLast" class="hint">last MIDI: –</span></p>
   </details>
 </aside>
@@ -835,6 +839,7 @@ const midiHeld=new Map(),midiLog=[];
 function onMidi(e){
   const d=e.data||[];const key=d.join(',')+'|'+e.timeStamp;if(key===lastKey)return;lastKey=key;
   const [st,n,v]=d,c=st&0xf0;
+  const src=e.currentTarget||e.target;if(src&&src.name)lastInName=src.name;
   const hex=[...d].map(x=>x.toString(16).padStart(2,'0')).join(' ');
   const isOn=c===0x90&&v>0,isOff=c===0x80||(c===0x90&&v===0);
   let note='';
@@ -856,10 +861,12 @@ function refreshInputs(){
   ins.forEach(i=>{try{i.onmidimessage=onMidi;i.addEventListener&&i.addEventListener('midimessage',onMidi);const o=i.open&&i.open();o&&o.catch&&o.catch(()=>{});}catch(e){console.error(e);}});
   setStatus(true,'MIDI: '+ins.map(i=>i.name).join(' + '));pbLabel();
   if(coachOn()&&CO.mode==='listen'&&!PB.on&&CO.last)coListenRefresh();
-  const o=pickOutput();$('midiText').textContent+=o?` — Listen plays on “${o.name}”`:' — no output found, so Listen uses the app\'s sound';
+  refreshOutSel();const o=pickOutput();$('midiText').textContent+=o?` — Listen plays on “${o.name}”`:' — no output found, so Listen uses the app\'s sound';
 }
 
 $('btnMidi').onclick=connectMidi;
+$('outSel').onchange=()=>{try{localStorage.setItem('pianoTutor.out',$('outSel').value);}catch(e){}pbLabel();};
+$('btnTestSound').onclick=testSound;
 
 
 // ---------- saved progress (localStorage) ----------
@@ -1076,7 +1083,35 @@ try{$('labels').checked=localStorage.getItem('pianoTutor.labels')==='1';}catch(e
 // ---------- playback: play the score on the piano (MIDI out) or through the app ----------
 const PB={on:false,timers:[],active:new Set(),voices:new Set()};
 function listOutputs(){const a=[],o=midiAccess&&midiAccess.outputs;if(!o)return a;try{if(o.forEach)o.forEach(x=>a.push(x));else for(const x of o.values())a.push(x);}catch(e){}return a;}
-function pickOutput(){const outs=listOutputs();if(!outs.length)return null;const nm=(attached[0]&&attached[0].name)||'';return outs.find(o=>o.name===nm)||outs[0];}
+// Choosing where Listen plays. iPads also list virtual ports such as "Network Session 1", which make no sound,
+// so prefer the port named like the piano that is sending notes; if unsure, send to every real port.
+let lastInName='';
+const isVirtual=o=>/network|session|iac|through|virtual|loopback/i.test(o.name||'');
+function outChoice(){try{return localStorage.getItem('pianoTutor.out')||'auto';}catch(e){return 'auto';}}
+function openOut(o){try{const r=o.open&&o.open();r&&r.catch&&r.catch(()=>{});}catch(e){}return o;}
+function pickOutput(){
+  const outs=listOutputs();if(!outs.length)return null;
+  const ch=outChoice(),real=outs.filter(o=>!isVirtual(o));
+  const byName=n=>n&&outs.find(o=>o.name===n);
+  if(ch!=='auto'&&ch!=='all'&&byName(ch))return openOut(byName(ch));
+  if(ch==='auto'){const inNames=[lastInName,...attached.map(i=>i.name)].filter(Boolean);
+    for(const n of inNames){const o=real.find(x=>x.name===n);if(o)return openOut(o);}
+    if(real.length===1)return openOut(real[0]);}
+  const targets=real.length?real:outs;targets.forEach(openOut);
+  return {name:targets.map(o=>o.name).join(' + '),send:d=>targets.forEach(o=>{try{o.send(d);}catch(e){console.error(e);}})};
+}
+function refreshOutSel(){
+  const sel=$('outSel');if(!sel)return;const outs=listOutputs(),ch=outChoice();
+  sel.innerHTML='<option value="auto">Automatic (recommended)</option><option value="all">Every output</option>'+outs.map(o=>`<option value="${o.name}">${o.name}${isVirtual(o)?' (virtual)':''}</option>`).join('');
+  sel.value=[...sel.options].some(x=>x.value===ch)?ch:'auto';
+  $('outInfo').textContent=outs.length?'Found: '+outs.map(o=>o.name).join(', '):'No MIDI outputs found yet — tap Connect piano first.';
+}
+function testSound(){
+  const out=pickOutput(),r=$('testRes');
+  if(!out){r.textContent='No piano output found. Tap Connect piano first.';return;}
+  let n=0,err=null;[60,64,67,72].forEach((m,i)=>{setTimeout(()=>{try{out.send([0x90,m,90]);n++;}catch(e){err=e;}},i*250);setTimeout(()=>{try{out.send([0x80,m,0]);}catch(e){}},i*250+220);});
+  setTimeout(()=>{r.textContent=err?`Couldn't send to ${out.name}: ${err.message||err}`:`Sent 4 notes to “${out.name}”. Did your piano play them? If not, pick a different output above and test again.`;},1100);
+}
 function pbLabel(){const b=$('btnPlay');if(!b)return;b.textContent=PB.on?'■ Stop':'▶ Listen';b.title=pickOutput()?'Play the song on your piano':'Play the song through the app (connect your piano to hear it there)';}
 function pbEvents(){ // one sounding note per tie chain, for the current hands and measures
   const ns=S.score.notes,ev=[];
