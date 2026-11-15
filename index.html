@@ -183,9 +183,9 @@ header{background:#292524}header select,header button{background:#44403c;color:#
     <p class="hint">Piano status: <span id="midiText">not connected</span></p>
     <label>Play songs on <select id="outSel"><option value="auto">Automatic (recommended)</option></select></label>
     <p><button id="btnTestSound" class="primary">🔊 Test sound on piano</button></p>
-    <label>Metronome clicks on <select id="metOut"><option value="drum">Piano – click sound (recommended)</option><option value="note">Piano – high piano note</option><option value="app">This device (iPad/computer)</option></select></label>
+    <label>Metronome clicks on <select id="metOut"><option value="roland">Piano's own metronome – Roland (recommended)</option><option value="drum">Piano – drum click</option><option value="note">Piano – high piano note</option><option value="app">This device (iPad/computer)</option></select></label>
     <p><button id="btnTestClick">🥁 Test metronome click</button></p>
-    <p class="hint">Clicks play on the piano once it's connected. If the test makes no sound on your piano, choose “high piano note”.</p>
+    <p class="hint">With “Piano's own metronome”, the app switches your Roland's built-in metronome on and off and sets its tempo — the same click you get from its Metronome button. If the test makes no sound, try another option.</p>
     <p class="hint" id="testRes"></p>
     <p class="hint" id="outInfo"></p>
     <p><select id="midiSel" style="display:none"></select> <span id="midiLast" class="hint">last MIDI: –</span></p>
@@ -746,14 +746,43 @@ const met={on:false};
 const spbOf=()=>60/(+$('bpm').value||60);
 const clockOf=q=>met.t0+(q-met.first)*met.spb;
 // Where the clicks sound: on the piano over MIDI (drum channel 10 wood block, or a short high note), else through the app.
-function metOutChoice(){try{return localStorage.getItem('pianoTutor.metOut')||'drum';}catch(e){return 'drum';}}
+function metOutChoice(){try{return localStorage.getItem('pianoTutor.metOut2')||'roland';}catch(e){return 'roland';}}
+// ---- Roland piano's built-in metronome over SysEx (as used by the Roland Piano App; FP-10/FP-30 family) ----
+// DT1: F0 41 10 00 00 00 28 12 <addr x4> <data> <checksum> F7.  Addresses (community-documented):
+// 01 00 03 06 remote control on · 01 00 03 09 tempo (2 bytes, 7-bit) · 01 00 02 1F beat (2/4=1,3/4=2,4/4=3…)
+// 01 00 05 09 metronome on/off toggle · 01 00 01 0F metronome status (read)
+const RM={on:false,timers:[]};
+const rmSum=a=>(128-(a.reduce((x,y)=>x+y,0)%128))%128;
+function rmSend(out,cmd,addr,data,ts){const body=[...addr,...data];try{out.send([0xF0,0x41,0x10,0x00,0x00,0x00,0x28,cmd,...body,rmSum(body),0xF7],ts);return true;}catch(e){console.error(e);return false;}}
+const rmDT1=(out,addr,data,ts)=>rmSend(out,0x12,addr,data,ts);
+function rmUsable(){return metOutChoice()==='roland'&&midiSysex&&!!pickOutput();}
+function rmQuery(){const out=midiSysex&&pickOutput();if(out)rmSend(out,0x11,[1,0,1,0x0F],[0,0,0,1]);}
+function rmOnSysex(d){ // reply / change notice for the metronome status
+  if(d.length>=14&&d[1]===0x41&&d[7]===0x12&&d[8]===1&&d[9]===0&&d[10]===1&&d[11]===0x0F)RM.on=d[12]!==0;
+}
+function rmPrepare(bpm,beats){ // remote on, tempo, time signature
+  const out=pickOutput();if(!out)return null;bpm=Math.max(20,Math.min(250,Math.round(bpm)));
+  rmDT1(out,[1,0,3,6],[1]);rmDT1(out,[1,0,3,9],[bpm>>7,bpm&0x7F]);
+  const bt={2:1,3:2,4:3,5:4,6:5}[beats];if(bt)rmDT1(out,[1,0,2,0x1F],[bt]);
+  rmQuery();return out;
+}
+function rmStartAt(bpm,beats,ts){ // ts = performance.now() time of the first click
+  const out=rmPrepare(bpm,beats);if(!out)return false;rmClear();
+  RM.timers.push(setTimeout(()=>{ // if it's already running, restart it so beat 1 lands on our count-in
+    if(RM.on){rmDT1(out,[1,0,5,9],[0]);setTimeout(()=>{rmDT1(out,[1,0,5,9],[0]);RM.on=true;},40);}
+    else{rmDT1(out,[1,0,5,9],[0]);RM.on=true;}
+  },Math.max(0,ts-performance.now())));
+  return true;
+}
+function rmClear(){RM.timers.forEach(clearTimeout);RM.timers=[];}
+function rmStop(){rmClear();if(!RM.on)return;const out=pickOutput();if(out)rmDT1(out,[1,0,5,9],[0]);RM.on=false;setTimeout(rmQuery,300);}
 function sendClick(out,accent,ts){
   const mode=metOutChoice(),drum=mode==='drum';
   const st=drum?0x99:0x91,note=drum?(accent?76:77):(accent?96:91),vel=accent?110:75; // 76/77 = hi/low wood block
   try{out.send([st,note,vel],ts);out.send([st-0x10,note,0],ts+60);return true;}catch(e){console.error(e);return false;}
 }
 function metClick(accent,ts,out){ // ts = performance.now() time; returns true if the click went to the piano
-  if(metOutChoice()==='app')return false;
+  const ch=metOutChoice();if(ch==='app'||ch==='roland')return false;
   out=out||pickOutput();if(!out)return false;
   return sendClick(out,accent,ts);
 }
@@ -761,10 +790,14 @@ function testClick(){
   const r=$('testRes'),out=pickOutput();
   if(metOutChoice()==='app'){r.textContent='Clicks are set to play on this device.';return;}
   if(!out){r.textContent='No piano output found. Tap Connect piano first.';return;}
+  if(metOutChoice()==='roland'){
+    if(!midiSysex){r.textContent='This browser didn\'t allow the extra MIDI access needed to control the piano\'s metronome. Tap Connect piano again and allow it, or pick another click option.';return;}
+    rmStartAt(100,4,performance.now()+100);r.textContent='Your piano\'s metronome should be clicking at 100 BPM for 4 seconds…';
+    setTimeout(()=>{rmStop();r.textContent=`Sent to “${out.name}”. Did the piano's metronome play (and stop by itself)? If its display showed a different tempo than 100, let Claude know.`;},4100);return;}
   const t=performance.now();[0,1,2,3].forEach(i=>sendClick(out,i===0,t+i*500));
   setTimeout(()=>{r.textContent=`Sent 4 clicks to “${out.name}”. Heard them? If not, choose a different click option above.`;},2100);
 }
-function metStop(){clearInterval(met.timer);met.on=false;$('beat').textContent='';}
+function metStop(){clearInterval(met.timer);if(met.rm){met.rm=false;rmStop();}met.on=false;$('beat').textContent='';}
 function metStart(fromIdx){
   metStop();fromIdx=typeof fromIdx==='number'?fromIdx:0;
   if(!$('met').checked||!S||!S.steps||!S.steps.length)return;
@@ -773,6 +806,7 @@ function metStart(fromIdx){
   met.spb=spbOf();met.bpb=Math.max(1,parseInt(m0.beats)||4);met.first=first.t;met.Q0=m0.startQ;
   met.t0=ac.currentTime+.4-(met.Q0-met.bpb-met.first)*met.spb;
   met.k=-met.bpb;met.on=true;
+  met.rm=rmUsable()&&rmStartAt(60/met.spb,met.bpb,performance.now()+Math.max(0,(clockOf(met.Q0+met.k)-ac.currentTime)*1000));
   S.steps.slice(fromIdx).forEach(s=>s.timing=null);
   met.timer=setInterval(metTick,25);
   say('Metronome on — count-in of '+met.bpb+' beats, then play with the clicks.');
@@ -784,7 +818,7 @@ function metTick(){
     if(time>ac.currentTime+.15)break;
     if(q>last.t+met.bpb+2){metStop();return;}
     const accent=((met.k%met.bpb)+met.bpb)%met.bpb===0,num=((met.k%met.bpb)+met.bpb)%met.bpb+1,cin=met.k<0;
-    if(!metClick(accent,performance.now()+Math.max(0,(time-ac.currentTime)*1000)))metBeep(accent,time);
+    if(!met.rm&&!metClick(accent,performance.now()+Math.max(0,(time-ac.currentTime)*1000)))metBeep(accent,time);
     setTimeout(()=>{const b=$('beat');b.textContent=(cin?'count-in ':'')+'● '+num;b.style.color=accent?'#dc2626':'#2563eb';},Math.max(0,(time-ac.currentTime)*1000));
     met.k++;
   }
@@ -866,10 +900,13 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{const k=e.key.toLowerCase();if(k in KMAP)vOff(kOct+KMAP[k]);});
 
 // ---------- Web MIDI ----------
-let midiAccess=null,curInput=null;
+let midiAccess=null,curInput=null,midiSysex=false;
 async function connectMidi(){
   if(!navigator.requestMIDIAccess){setStatus(false,'MIDI: not supported in this browser (use Chrome/Edge)');return;}
-  try{midiAccess=await navigator.requestMIDIAccess();}catch(e){setStatus(false,'MIDI: permission denied');return;}
+  // SysEx lets the app drive the piano's own metronome (Roland); fall back to plain MIDI if refused.
+  try{midiAccess=await navigator.requestMIDIAccess({sysex:true});midiSysex=true;}
+  catch(e){try{midiAccess=await navigator.requestMIDIAccess();midiSysex=false;}catch(e2){setStatus(false,'MIDI: permission denied');return;}}
+  setTimeout(()=>rmQuery(),800);
   midiAccess.onstatechange=refreshInputs;refreshInputs();
   try{localStorage.setItem('pianoTutor.midi','1');}catch(e){}
 }
@@ -878,7 +915,8 @@ function listInputs(){const a=[];if(midiAccess.inputs.forEach)midiAccess.inputs.
 let lastKey='',attached=[];
 const midiHeld=new Map(),midiLog=[];
 function onMidi(e){
-  const d=e.data||[];const key=d.join(',')+'|'+e.timeStamp;if(key===lastKey)return;lastKey=key;
+  const d=e.data||[];
+  if(d[0]===0xF0){rmOnSysex(d);return;}const key=d.join(',')+'|'+e.timeStamp;if(key===lastKey)return;lastKey=key;
   const [st,n,v]=d,c=st&0xf0;
   const src=e.currentTarget||e.target;if(src&&src.name)lastInName=src.name;
   const hex=[...d].map(x=>x.toString(16).padStart(2,'0')).join(' ');
@@ -910,7 +948,7 @@ $('outSel').onchange=()=>{try{localStorage.setItem('pianoTutor.out',$('outSel').
 $('btnTestSound').onclick=testSound;
 $('btnTestClick').onclick=testClick;
 $('metOut').value=metOutChoice();
-$('metOut').onchange=()=>{try{localStorage.setItem('pianoTutor.metOut',$('metOut').value);}catch(e){}};
+$('metOut').onchange=()=>{try{localStorage.setItem('pianoTutor.metOut2',$('metOut').value);}catch(e){}};
 
 
 // ---------- saved progress (localStorage) ----------
@@ -1184,12 +1222,13 @@ function pbStart(opts){ // opts.clicks: play the metronome along (one bar count-
   const t0=clicks?Q0-bpb:ev[0].t,lastQ=Math.max(...ev.map(e=>e.t+e.dur));
   PB.on=true;PB.out=out;PB.clicks=clicks;S.idx=0;S.hit=new Set();$('summary').style.display='none';
   let i=0,k=-bpb;
+  PB.rm=clicks&&rmUsable()&&rmStartAt(60/spb,bpb,start);
   const tick=()=>{
     const now=performance.now();
     while(clicks&&ac){ // metronome beats, on the piano if possible
       const q=Q0+k,at=start+(q-t0)*spb*1000;if(at>now+150||q>=lastQ-.01)break;
       const beat=((k%bpb)+bpb)%bpb,accent=beat===0,cin=k<0;
-      if(!PB.on)break;if(!metClick(accent,at,out))metBeep(accent,acStart+(at-start)/1000);
+      if(!PB.on)break;if(!PB.rm&&!metClick(accent,at,out))metBeep(accent,acStart+(at-start)/1000);
       PB.timers.push(setTimeout(()=>{if(!PB.on)return;const b=$('beat');b.textContent=(cin?'count-in ':'')+'● '+(beat+1);b.style.color=accent?'#dc2626':'#2563eb';},Math.max(0,at-now)));
       k++;
     }
@@ -1211,7 +1250,7 @@ function pbStart(opts){ // opts.clicks: play the metronome along (one bar count-
   say(out?`▶ Playing on ${out.name} at ${$('bpm').value} BPM${clicks?' with the metronome':''} — listen and follow the highlighted notes.`:`▶ Playing through the app at ${$('bpm').value} BPM (connect your piano to hear it there).`);
 }
 function pbHalt(){
-  if(!PB.on)return;PB.on=false;clearInterval(PB.iv);PB.timers.forEach(clearTimeout);PB.timers=[];
+  if(!PB.on)return;PB.on=false;clearInterval(PB.iv);PB.timers.forEach(clearTimeout);PB.timers=[];if(PB.rm){PB.rm=false;rmStop();}
   const out=PB.out;
   if(out){try{PB.active.forEach(m=>out.send([0x80,m,0]));out.send([0xB0,123,0]);if(PB.clicks)out.send([0xB9,123,0]);}catch(e){}}
   $('beat').textContent='';
