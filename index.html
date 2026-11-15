@@ -752,10 +752,9 @@ function sendClick(out,accent,ts){
   const st=drum?0x99:0x91,note=drum?(accent?76:77):(accent?96:91),vel=accent?110:75; // 76/77 = hi/low wood block
   try{out.send([st,note,vel],ts);out.send([st-0x10,note,0],ts+60);return true;}catch(e){console.error(e);return false;}
 }
-function metClick(accent,time){ // returns true if the click went to the piano
+function metClick(accent,ts,out){ // ts = performance.now() time; returns true if the click went to the piano
   if(metOutChoice()==='app')return false;
-  const out=pickOutput();if(!out)return false;
-  const ts=performance.now()+Math.max(0,(time-ac.currentTime)*1000);
+  out=out||pickOutput();if(!out)return false;
   return sendClick(out,accent,ts);
 }
 function testClick(){
@@ -785,14 +784,16 @@ function metTick(){
     if(time>ac.currentTime+.15)break;
     if(q>last.t+met.bpb+2){metStop();return;}
     const accent=((met.k%met.bpb)+met.bpb)%met.bpb===0,num=((met.k%met.bpb)+met.bpb)%met.bpb+1,cin=met.k<0;
-    if(metClick(accent,time)){}else{
-    const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=accent?1500:1000;
-    g.gain.setValueAtTime(.0001,Math.max(time,ac.currentTime));g.gain.exponentialRampToValueAtTime(.3,Math.max(time,ac.currentTime)+.003);
-    g.gain.exponentialRampToValueAtTime(.0001,Math.max(time,ac.currentTime)+.06);
-    o.connect(g).connect(ac.destination);o.start(Math.max(time,ac.currentTime));o.stop(Math.max(time,ac.currentTime)+.08);}
+    if(!metClick(accent,performance.now()+Math.max(0,(time-ac.currentTime)*1000)))metBeep(accent,time);
     setTimeout(()=>{const b=$('beat');b.textContent=(cin?'count-in ':'')+'● '+num;b.style.color=accent?'#dc2626':'#2563eb';},Math.max(0,(time-ac.currentTime)*1000));
     met.k++;
   }
+}
+function metBeep(accent,time){
+    const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=accent?1500:1000;
+    g.gain.setValueAtTime(.0001,Math.max(time,ac.currentTime));g.gain.exponentialRampToValueAtTime(.3,Math.max(time,ac.currentTime)+.003);
+    g.gain.exponentialRampToValueAtTime(.0001,Math.max(time,ac.currentTime)+.06);
+    o.connect(g).connect(ac.destination);o.start(Math.max(time,ac.currentTime));o.stop(Math.max(time,ac.currentTime)+.08);
 }
 function timingOf(st){
   if(!met.on||!st)return '';
@@ -1173,15 +1174,25 @@ function pbSynth(m,t1,t2){
   g.gain.setValueAtTime(.15,Math.max(t1+.01,t2-.05));g.gain.exponentialRampToValueAtTime(.0001,t2);
   o.connect(g).connect(ac.destination);o.start(t1);o.stop(t2+.02);PB.voices.add(o);o.onended=()=>PB.voices.delete(o);
 }
-function pbStart(){
+function pbStart(opts){ // opts.clicks: play the metronome along (one bar count-in first)
   if(!S||!S.steps||!S.steps.length)return;
   const ev=pbEvents();if(!ev.length)return;
+  const clicks=opts&&opts.clicks!=null?opts.clicks:$('met').checked;
   metStop();try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();}catch(e){}
-  const out=pickOutput(),spb=spbOf(),t0=ev[0].t,start=performance.now()+300,acStart=ac?ac.currentTime+.3:0;
-  PB.on=true;PB.out=out;S.idx=0;S.hit=new Set();$('summary').style.display='none';
-  let i=0;
+  const out=pickOutput(),spb=spbOf(),start=performance.now()+300,acStart=ac?ac.currentTime+.3:0;
+  const m0=S.score.measures[S.steps[0].measure]||{},bpb=Math.max(1,parseInt(m0.beats)||4),Q0=m0.startQ!=null?m0.startQ:ev[0].t;
+  const t0=clicks?Q0-bpb:ev[0].t,lastQ=Math.max(...ev.map(e=>e.t+e.dur));
+  PB.on=true;PB.out=out;PB.clicks=clicks;S.idx=0;S.hit=new Set();$('summary').style.display='none';
+  let i=0,k=-bpb;
   const tick=()=>{
     const now=performance.now();
+    while(clicks&&ac){ // metronome beats, on the piano if possible
+      const q=Q0+k,at=start+(q-t0)*spb*1000;if(at>now+150||q>=lastQ-.01)break;
+      const beat=((k%bpb)+bpb)%bpb,accent=beat===0,cin=k<0;
+      if(!PB.on)break;if(!metClick(accent,at,out))metBeep(accent,acStart+(at-start)/1000);
+      PB.timers.push(setTimeout(()=>{if(!PB.on)return;const b=$('beat');b.textContent=(cin?'count-in ':'')+'● '+(beat+1);b.style.color=accent?'#dc2626':'#2563eb';},Math.max(0,at-now)));
+      k++;
+    }
     while(i<ev.length){
       const e=ev[i],on=start+(e.t-t0)*spb*1000;if(on>now+150)break;
       const off=on+Math.max(.05,e.dur*spb-.04)*1000;
@@ -1197,12 +1208,13 @@ function pbStart(){
       PB.timers.push(setTimeout(()=>pbStop('done'),Math.max(0,start+(last.t+last.dur-t0)*spb*1000-now)+300));}
   };
   PB.iv=setInterval(tick,25);tick();pbLabel();refreshAll();
-  say(out?`▶ Playing on ${out.name} at ${$('bpm').value} BPM — listen and follow the highlighted notes.`:`▶ Playing through the app at ${$('bpm').value} BPM (connect your piano to hear it there).`);
+  say(out?`▶ Playing on ${out.name} at ${$('bpm').value} BPM${clicks?' with the metronome':''} — listen and follow the highlighted notes.`:`▶ Playing through the app at ${$('bpm').value} BPM (connect your piano to hear it there).`);
 }
 function pbHalt(){
   if(!PB.on)return;PB.on=false;clearInterval(PB.iv);PB.timers.forEach(clearTimeout);PB.timers=[];
   const out=PB.out;
-  if(out){try{PB.active.forEach(m=>out.send([0x80,m,0]));out.send([0xB0,123,0]);}catch(e){}}
+  if(out){try{PB.active.forEach(m=>out.send([0x80,m,0]));out.send([0xB0,123,0]);if(PB.clicks)out.send([0xB9,123,0]);}catch(e){}}
+  $('beat').textContent='';
   PB.voices.forEach(o=>{try{o.stop();}catch(e){}});PB.voices.clear();PB.active.clear();pbLabel();
 }
 function pbStop(why){pbHalt();buildSteps(S.lastOv);if(coachOn()&&CO.mode==='listen'){coOnListened();return;}say(why==='done'?'Finished playing — now you try. Press the highlighted note.':'Playback stopped.');}
@@ -1255,7 +1267,7 @@ function coStart(){
 function coListen(from,to,next,title,sub,hands,auto,extra){
   CO.mode='listen';CO.afterListen=next;
   coSetup(hands,from,to);
-  const play=()=>{pbStart();if(!PB.on){coOnListened();return;}
+  const play=()=>{pbStart({clicks:!!PH[coRec().phase].met});if(!PB.on){coOnListened();return;}
     coShow(title,(sub?sub+' ':'')+(PB.out?`Playing on ${PB.out.name}.`:'Playing through the app.'),[{t:'■ Stop',f:()=>pbStop()}]);};
   if(auto&&pickOutput()){play();return;}
   coShow(title,(sub?sub+' ':'')+(pickOutput()?'':'<br><small>To hear it on your piano, tap <b>Connect piano</b> at the top first.</small>'),[{t:'▶ Play it',f:play},{t:'Skip',f:()=>coOnListened()}].concat(extra||[]));
@@ -1263,10 +1275,16 @@ function coListen(from,to,next,title,sub,hands,auto,extra){
 function coListenRefresh(){const l=CO.last;coShow(l[0],(l[1]||'').replace(/<br><small>.*<\/small>/,''),l[2],l[3],l[4]);}
 function coOnListened(){const f=CO.afterListen;CO.afterListen=null;CO.mode='';if(f)f();}
 function coRun(note){
-  const c=coRec(),ph=PH[c.phase];CO.mode='run';coSetup();
+  const c=coRec(),ph=PH[c.phase];
+  if(c.phase===3&&CO.heardLvl!==CO.level){ // new speed: hear the timing to aim for first
+    const bpm=coLevels()[CO.level];
+    coListen(undefined,undefined,()=>{CO.heardLvl=CO.level;coRun(note);},`Hear it at ${coSpeedName(CO.level)} speed 👂`,
+      `This is the timing to aim for — ${bpm} beats a minute, with the metronome clicking. Notice how long each note lasts.`,'both',false);return;}
+  CO.mode='run';coSetup();
   coSaveRaw('run');
   coShow('Play the whole song',c.phase===3?`With the clicks, at ${coSpeedName(CO.level)} speed. After the count-in, play each note on its click.`:
-    `${c.phase===2?'Both hands together':ph.name+' only'}, slowly. Take your time — I'll just watch and note anything tricky.`,[],note);
+    `${c.phase===2?'Both hands together':ph.name+' only'}, slowly. Take your time — I'll just watch and note anything tricky.`,
+    c.phase===3?[{t:'👂 Hear it again first',f:()=>{metStop();CO.heardLvl=-1;coRun(note);}}]:[],note);
 }
 function coAnalyse(pauses){
   const bars={},get=m=>bars[m]||(bars[m]={wrong:0,pause:0,timing:0,staffs:new Set()});
