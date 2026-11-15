@@ -183,6 +183,9 @@ header{background:#292524}header select,header button{background:#44403c;color:#
     <p class="hint">Piano status: <span id="midiText">not connected</span></p>
     <label>Play songs on <select id="outSel"><option value="auto">Automatic (recommended)</option></select></label>
     <p><button id="btnTestSound" class="primary">🔊 Test sound on piano</button></p>
+    <label>Metronome clicks on <select id="metOut"><option value="drum">Piano – click sound (recommended)</option><option value="note">Piano – high piano note</option><option value="app">This device (iPad/computer)</option></select></label>
+    <p><button id="btnTestClick">🥁 Test metronome click</button></p>
+    <p class="hint">Clicks play on the piano once it's connected. If the test makes no sound on your piano, choose “high piano note”.</p>
     <p class="hint" id="testRes"></p>
     <p class="hint" id="outInfo"></p>
     <p><select id="midiSel" style="display:none"></select> <span id="midiLast" class="hint">last MIDI: –</span></p>
@@ -742,6 +745,26 @@ function showGhost(m,st){
 const met={on:false};
 const spbOf=()=>60/(+$('bpm').value||60);
 const clockOf=q=>met.t0+(q-met.first)*met.spb;
+// Where the clicks sound: on the piano over MIDI (drum channel 10 wood block, or a short high note), else through the app.
+function metOutChoice(){try{return localStorage.getItem('pianoTutor.metOut')||'drum';}catch(e){return 'drum';}}
+function sendClick(out,accent,ts){
+  const mode=metOutChoice(),drum=mode==='drum';
+  const st=drum?0x99:0x91,note=drum?(accent?76:77):(accent?96:91),vel=accent?110:75; // 76/77 = hi/low wood block
+  try{out.send([st,note,vel],ts);out.send([st-0x10,note,0],ts+60);return true;}catch(e){console.error(e);return false;}
+}
+function metClick(accent,time){ // returns true if the click went to the piano
+  if(metOutChoice()==='app')return false;
+  const out=pickOutput();if(!out)return false;
+  const ts=performance.now()+Math.max(0,(time-ac.currentTime)*1000);
+  return sendClick(out,accent,ts);
+}
+function testClick(){
+  const r=$('testRes'),out=pickOutput();
+  if(metOutChoice()==='app'){r.textContent='Clicks are set to play on this device.';return;}
+  if(!out){r.textContent='No piano output found. Tap Connect piano first.';return;}
+  const t=performance.now();[0,1,2,3].forEach(i=>sendClick(out,i===0,t+i*500));
+  setTimeout(()=>{r.textContent=`Sent 4 clicks to “${out.name}”. Heard them? If not, choose a different click option above.`;},2100);
+}
 function metStop(){clearInterval(met.timer);met.on=false;$('beat').textContent='';}
 function metStart(fromIdx){
   metStop();fromIdx=typeof fromIdx==='number'?fromIdx:0;
@@ -762,10 +785,11 @@ function metTick(){
     if(time>ac.currentTime+.15)break;
     if(q>last.t+met.bpb+2){metStop();return;}
     const accent=((met.k%met.bpb)+met.bpb)%met.bpb===0,num=((met.k%met.bpb)+met.bpb)%met.bpb+1,cin=met.k<0;
+    if(metClick(accent,time)){}else{
     const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=accent?1500:1000;
     g.gain.setValueAtTime(.0001,Math.max(time,ac.currentTime));g.gain.exponentialRampToValueAtTime(.3,Math.max(time,ac.currentTime)+.003);
     g.gain.exponentialRampToValueAtTime(.0001,Math.max(time,ac.currentTime)+.06);
-    o.connect(g).connect(ac.destination);o.start(Math.max(time,ac.currentTime));o.stop(Math.max(time,ac.currentTime)+.08);
+    o.connect(g).connect(ac.destination);o.start(Math.max(time,ac.currentTime));o.stop(Math.max(time,ac.currentTime)+.08);}
     setTimeout(()=>{const b=$('beat');b.textContent=(cin?'count-in ':'')+'● '+num;b.style.color=accent?'#dc2626':'#2563eb';},Math.max(0,(time-ac.currentTime)*1000));
     met.k++;
   }
@@ -883,6 +907,9 @@ function refreshInputs(){
 $('btnMidi').onclick=connectMidi;
 $('outSel').onchange=()=>{try{localStorage.setItem('pianoTutor.out',$('outSel').value);}catch(e){}pbLabel();};
 $('btnTestSound').onclick=testSound;
+$('btnTestClick').onclick=testClick;
+$('metOut').value=metOutChoice();
+$('metOut').onchange=()=>{try{localStorage.setItem('pianoTutor.metOut',$('metOut').value);}catch(e){}};
 
 
 // ---------- saved progress (localStorage) ----------
