@@ -150,7 +150,7 @@ header{background:#292524}header select,header button{background:#44403c;color:#
   </details>
   <details>
     <summary>Songs</summary>
-    <label>Book songs <select id="demo"><option value="jingle">Jingle Bells (Alfred's p.30)</option><option value="merrily">Merrily We Roll Along (Alfred's p.35)</option><option value="largo">Largo – Going Home (Alfred's p.35)</option><option value="maryann">Mary Ann (Alfred's p.37)</option><option value="rockets">Rockets (Alfred's p.40)</option><option value="ode">Ode to Joy (hands together)</option><option value="chords">Chords I–IV–V–I</option></select></label>
+    <label>Book songs <select id="demo"><option value="jingle">Jingle Bells (Alfred's p.30)</option><option value="harm45">Harmonic 4ths &amp; 5ths (Alfred's p.32)</option><option value="dueling">Dueling Harmonics (Alfred's p.32)</option><option value="merrily">Merrily We Roll Along (Alfred's p.35)</option><option value="largo">Largo – Going Home (Alfred's p.35)</option><option value="maryann">Mary Ann (Alfred's p.37)</option><option value="rockets">Rockets (Alfred's p.40)</option><option value="ode">Ode to Joy (hands together)</option><option value="chords">Chords I–IV–V–I</option></select></label>
     <label>Your songs <select id="saved"><option value="">Your saved songs…</option></select></label>
     <label>Load a MusicXML file <input type="file" id="file" accept=".musicxml,.xml,.mxl"></label>
     <details><summary>Paste MusicXML text</summary>
@@ -319,6 +319,14 @@ const DEMOS={
     {rh:'E4:q G4:q C4:q D4:q',lh:'C3+G3:w'},{rh:'E4:w',lh:'C3+G3:w'},
     {rh:'F4:q F4:q F4:q F4:q',lh:'D3+G3:w'},{rh:'F4:q E4:q E4:q E4:q',lh:'C3+G3:w'},
     {rh:'G4:q G4:q F4:q D4:q',lh:'D3+G3:h G3:h'},{rh:'C4:w',lh:'C3+G3:w'}]),
+  harm45:()=>buildXML('Harmonic 4ths & 5ths',0,[
+    {rh:'C4+F4:h C4+G4:h',lh:'r:w'},{rh:'r:w',lh:'C3+F3:h C3+G3:h'},
+    {rh:'D4+G4:h C4+G4:h',lh:'r:w'},{rh:'r:w',lh:'C3+F3:h C3+G3:h'}]),
+  dueling:()=>buildXML('Dueling Harmonics',0,[
+    {rh:'C4+E4:q C4+F4:q C4+E4:h',lh:'r:w'},{rh:'r:w',lh:'C3+E3:q C3+F3:q C3+E3:h'},
+    {rh:'C4+F4:q C4+G4:q C4+F4:q C4+E4:q',lh:'r:w'},{rh:'r:w',lh:'C3+F3:q C3+G3:q C3+F3:q C3+E3:q'},
+    {rh:'E4+G4:q F4+G4:q E4+G4:h',lh:'r:w'},{rh:'r:w',lh:'E3+G3:q F3+G3:q E3+G3:h'},
+    {rh:'D4+G4:q C4+G4:q D4+G4:q C4+F4:q',lh:'r:w'},{rh:'r:w',lh:'D3+G3:q C3+G3:q D3+G3:q C3+G3:q'}]),
   merrily:()=>{const C='C3+E3+G3',G7='B2+F3+G3';return buildXML('Merrily We Roll Along',0,[
     {rh:'E4:q D4:q C4:q D4:q',lh:`${C}:w~`},{rh:'E4:q E4:q E4:h',lh:`_${C}:w`},
     {rh:'D4:q D4:q D4:h',lh:`${G7}:w`},{rh:'E4:q G4:q G4:h',lh:`${C}:w`},
