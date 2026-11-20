@@ -203,9 +203,9 @@ header{background:#292524}header select,header button{background:#44403c;color:#
     <p class="hint">Piano status: <span id="midiText">not connected</span></p>
     <label>Play songs on <select id="outSel"><option value="auto">Automatic (recommended)</option></select></label>
     <p><button id="btnTestSound" class="primary">🔊 Test sound on piano</button></p>
-    <label>Metronome clicks on <select id="metOut"><option value="roland">Piano's own metronome – Roland (recommended)</option><option value="drum">Piano – drum click</option><option value="note">Piano – high piano note</option><option value="app">This device (iPad/computer)</option></select></label>
+    <label>Metronome clicks on <select id="metOut"><option value="drum">Piano – drum click (recommended)</option><option value="roland">Piano's own metronome – Roland (experimental, may not work)</option><option value="note">Piano – high piano note</option><option value="app">This device (iPad/computer)</option></select></label>
     <p><button id="btnTestClick">🥁 Test metronome click</button></p>
-    <p class="hint">With “Piano's own metronome”, the app switches your Roland's built-in metronome on and off and sets its tempo — the same click you get from its Metronome button. If the test makes no sound, try another option.</p>
+    <p class="hint">The drum click is sent to your piano by the app, so it stays in step with the beat the app checks you against. The Roland's own metronome option tries to switch the piano's built-in metronome on through extra MIDI access (SysEx); it doesn't work on every setup and can drift from the app's beat.</p>
     <p class="hint" id="testRes"></p>
     <p class="hint" id="outInfo"></p>
     <p><select id="midiSel" style="display:none"></select> <span id="midiLast" class="hint">last MIDI: –</span></p>
@@ -666,6 +666,7 @@ function noteOn(m){
   if(req.has(m)){
     keyMark.set(m,'ok');
     const had=S.hit.has(m);S.hit.add(m);if(!had)logPress(true);
+    if(!st.firstAt&&ac)st.firstAt=ac.currentTime; // judge timing on the first note of a chord, not the last
     if(S.hit.size===req.size){advance();return;}
     if(!had)say('✓ Got it — still waiting for: '+st.notes.filter(n=>!S.hit.has(n.midi)).map(n=>n.name).join(' '),'good');
   }else{
@@ -717,7 +718,7 @@ function guidedLoop(st){ // call after S.idx++; returns true if it moved back to
   const ms=S.steps.filter(x=>x.measure===st.measure);
   if(ms[ms.length-1]!==st)return false;
   const clean=ms.every(x=>!x.errs),need=spNeed();
-  const start=()=>{S.idx=S.steps.indexOf(ms[0]);S.hit=new Set();ms.forEach(x=>{if(x.errs)x.hadErr=true;x.errs=0;x.notes.forEach(n=>{if(n.missed)n.hadMiss=true;n.missed=false;});});metStart(S.idx);};
+  const start=()=>{S.idx=S.steps.indexOf(ms[0]);S.hit=new Set();ms.forEach(x=>{x.firstAt=null;if(x.errs)x.hadErr=true;x.errs=0;x.notes.forEach(n=>{if(n.missed)n.hadMiss=true;n.missed=false;});});metStart(S.idx);};
   if(S.loop&&S.loop.measure===st.measure){
     S.loop.streak=clean?S.loop.streak+1:0;
     if(S.loop.streak>=need){S.loop=null;say(`✓ Bar ${st.measure+1} is solid — carrying on.`,'good');return false;}
@@ -795,7 +796,7 @@ const met={on:false};
 const spbOf=()=>60/(+$('bpm').value||60);
 const clockOf=q=>met.t0+(q-met.first)*met.spb;
 // Where the clicks sound: on the piano over MIDI (drum channel 10 wood block, or a short high note), else through the app.
-function metOutChoice(){try{return localStorage.getItem('pianoTutor.metOut2')||'roland';}catch(e){return 'roland';}}
+function metOutChoice(){try{return localStorage.getItem('pianoTutor.metOut3')||'drum';}catch(e){return 'roland';}}
 // ---- Roland piano's built-in metronome over SysEx (as used by the Roland Piano App; FP-10/FP-30 family) ----
 // DT1: F0 41 10 00 00 00 28 12 <addr x4> <data> <checksum> F7.  Addresses (community-documented):
 // 01 00 03 06 remote control on · 01 00 03 09 tempo (2 bytes, 7-bit) · 01 00 02 1F beat (2/4=1,3/4=2,4/4=3…)
@@ -878,11 +879,15 @@ function metBeep(accent,time){
     g.gain.exponentialRampToValueAtTime(.0001,Math.max(time,ac.currentTime)+.06);
     o.connect(g).connect(ac.destination);o.start(Math.max(time,ac.currentTime));o.stop(Math.max(time,ac.currentTime)+.08);
 }
+function timingOffset(arr){const v=arr.slice().sort((a,b)=>a-b),md=v[Math.floor(v.length/2)];return Math.max(-200,Math.min(200,md));}
 function timingOf(st){
   if(!met.on||!st)return '';
-  const ms=(ac.currentTime-clockOf(st.t))*1000;st.timing=ms;
-  const beats=ms/1000/met.spb,a=Math.abs(Math.round(ms));
-  if(Math.abs(beats)<=.25)return ' on time';
+  const ms=((st.firstAt||ac.currentTime)-clockOf(st.t))*1000;st.timing=ms;
+  // Bluetooth MIDI delays both the clicks and your notes, so a steady lag is latency, not you: judge against your usual offset
+  const prev=S.steps.filter(x=>x!==st&&x.timing!=null).map(x=>x.timing);
+  const off=prev.length>=3?timingOffset(prev):0,dev=ms-off;
+  const beats=dev/1000/met.spb,a=Math.abs(Math.round(dev));
+  if(Math.abs(beats)<=.35)return ' on time';
   return ` ${beats>0?'late':'early'} by ${a} ms`+(beats>0?' (try slowing the tempo)':'');
 }
 function timingSummary(){
@@ -953,7 +958,8 @@ let midiAccess=null,curInput=null,midiSysex=false;
 async function connectMidi(){
   if(!navigator.requestMIDIAccess){setStatus(false,'MIDI: not supported in this browser (use Chrome/Edge)');return;}
   // SysEx lets the app drive the piano's own metronome (Roland); fall back to plain MIDI if refused.
-  try{midiAccess=await navigator.requestMIDIAccess({sysex:true});midiSysex=true;}
+  // only ask for SysEx (the extra permission prompt) when the Roland metronome option is chosen
+  try{if(metOutChoice()!=='roland')throw 0;midiAccess=await navigator.requestMIDIAccess({sysex:true});midiSysex=true;}
   catch(e){try{midiAccess=await navigator.requestMIDIAccess();midiSysex=false;}catch(e2){setStatus(false,'MIDI: permission denied');return;}}
   setTimeout(()=>rmQuery(),800);
   midiAccess.onstatechange=refreshInputs;refreshInputs();
@@ -997,7 +1003,7 @@ $('outSel').onchange=()=>{try{localStorage.setItem('pianoTutor.out',$('outSel').
 $('btnTestSound').onclick=testSound;
 $('btnTestClick').onclick=testClick;
 $('metOut').value=metOutChoice();
-$('metOut').onchange=()=>{try{localStorage.setItem('pianoTutor.metOut2',$('metOut').value);}catch(e){}};
+$('metOut').onchange=()=>{try{localStorage.setItem('pianoTutor.metOut3',$('metOut').value);}catch(e){}if($('metOut').value==='roland'&&!midiSysex&&midiAccess)connectMidi();};
 
 
 // ---------- saved progress (localStorage) ----------
@@ -1363,8 +1369,10 @@ let CO={},coSession=0;
 const isCoach=()=>document.body.classList.contains('coach');
 const coachOn=()=>isCoach()&&!!S&&CO.song===S.songId;
 function coRec(){const r=songRec();if(!r.coach)r.coach={phase:0,level:0,target:80,tomorrow:[],cleanDays:[],heard:false,learned:false};return r.coach;}
-function coLevels(){const t=Math.max(40,+coRec().target||80),a=[];for(let b=40;b<t;b+=10)a.push(b);a.push(t);return a;}
-function coSpeedName(i){const L=coLevels();return i>=L.length-1?'book speed':L[i]<=50?'slow':'steady';}
+// start near 3/4 of book speed (slow playing of a song you know tends to add mistakes), then 10 BPM steps
+function tempoLadder(target){const t=Math.max(40,+target||80),st=Math.max(40,Math.round(t*.75/5)*5),a=[];for(let b=st;b<t;b+=10)a.push(b);a.push(t);return a;}
+function coLevels(){return tempoLadder(coRec().target);}
+function coSpeedName(i){const L=coLevels();return i>=L.length-1?'book speed':i===0?'comfortable':'quicker';}
 const coHasStaff=st=>S.score.notes.some(n=>!n.rest&&n.staff===st);
 function coSkipEmpty(c){while(c.phase<2&&!coHasStaff(PH[c.phase].staff))c.phase++;}
 function coSetup(hands,from,to){ // from/to: 0-based measures; undefined = whole song
@@ -1378,11 +1386,13 @@ function coShow(sayTxt,sub,btns,note,chip){
   CO.last=[sayTxt,sub,btns,note,chip];
   const c=coRec(),L=coLevels(),box=$('coach');
   const phases=PH.map((p,i)=>`<span class="${i<c.phase?'done':i===c.phase?'now':''}">${i<c.phase?'✓ ':''}${p.name}</span>`).join('<b>›</b>');
-  const ladder=c.phase===3?`<div class="cfoot">Speed: ${['slow','steady','book speed'].map(n=>`<span class="${coSpeedName(CO.level)===n?'cur':''}">${n}</span>`).join(' → ')} <small>(${L[CO.level]} beats a minute)</small> <span>· book speed <input type="number" id="coTarget" min="40" max="200" value="${c.target}"></span></div>`:'';
+  const ladder=c.phase===3?`<div class="cfoot">Speed (beats a minute): ${L.map((b,i)=>`<span class="${i===CO.level?'cur':''}">${b}${i===L.length-1?' 🏁':''}</span>`).join(' → ')} ${CO.level>0?'<button class="link" id="coSlower">◀ Slower</button>':''}${CO.level<L.length-1?'<button class="link" id="coFaster">Faster ▶</button>':''} <span>· book speed <input type="number" id="coTarget" min="40" max="200" value="${c.target}"></span></div>`:'';
   box.innerHTML=`<div class="cphase">${CO.mode==='test'?'<span class="now">🎯 Placement test</span>':phases}<span class="cact">${['run','fix','listen','pause'].includes(CO.mode)?'<button class="link" id="coPauseBtn">⏸ Pause</button>':''}<button class="link" id="coTestBtn">🎯 Test me</button><button class="link" id="coOver">↺ Start over</button></span></div>${coProgHTML()}${note?`<div class="cnote">${note}</div>`:''}<div class="csay">${sayTxt}${chip?` <span class="cchip">${chip}</span>`:''}</div>${sub?`<div class="csub">${sub}</div>`:''}<div class="cbtns"></div>${ladder}`;
   const bb=box.querySelector('.cbtns');(btns||[]).forEach((b,i)=>{const e=document.createElement('button');e.textContent=b.t;if(!i)e.className='primary';e.onclick=b.f;bb.appendChild(e);});
   $('coTestBtn').onclick=coTestStart;const pz=$('coPauseBtn');if(pz)pz.onclick=coPause;
   const ov=$('coOver');ov.onclick=()=>{if(ov.dataset.sure){delete songRec().coach;dbSave();coStart();}else{ov.dataset.sure=1;ov.textContent='Tap again to start this song from scratch';}};
+  const cs=$('coSlower'),cf=$('coFaster');const jump=d=>{pbHalt();metStop();CO.level=Math.max(0,Math.min(coLevels().length-1,CO.level+d));CO.runFails=0;c.level=CO.level;dbSave();CO.heardLvl=CO.level;coRun(d>0?'Faster it is 💪':'A bit slower.');};
+  if(cs)cs.onclick=()=>jump(-1);if(cf)cf.onclick=()=>jump(1);
   const tg=$('coTarget');if(tg)tg.onchange=()=>{c.target=Math.max(40,Math.min(200,+tg.value||80));CO.level=Math.min(CO.level,coLevels().length-1);dbSave();coRun('Book speed changed.');};
   fitScoreWrap();
 }
@@ -1390,12 +1400,12 @@ function coStart(){
   if(!S)return;$('sp').checked=false;$('seq').checked=false;
   if(!coSession)coSession=Date.now();
   const c=coRec();coSkipEmpty(c);
-  CO={song:S.songId,mode:'',queue:[],improved:[],runFails:0,level:Math.max(0,Math.min(c.level-(c.phase===3&&c.level>0?1:0),coLevels().length-1))};
+  CO={song:S.songId,mode:'',queue:[],improved:[],runFails:0,level:Math.max(0,Math.min(c.level||0,coLevels().length-1))};
   if(c.session){const sn=c.session;CO.mode='paused';
     coShow('Welcome back! 👋',`Pick up where you left off — ${coDescribe(sn)}?`,[{t:'▶ Resume',f:()=>coResume(sn)},{t:'Start from the whole song',f:()=>{c.session=null;dbSave();coRun('');}}]);return;}
   if(c.tomorrow.length){CO.queue=c.tomorrow.slice();c.tomorrow=[];dbSave();coNextBar('Welcome back! First, the bars you saved for today.');return;}
   if(!c.heard){coListen(undefined,undefined,()=>{c.heard=true;dbSave();coRun('Now your turn.');},'Listen to the whole song first 👂','Follow the notes as they light up. Already know it a bit? Take the test to find your starting point.','both',false,[{t:'🎯 Test me on it',f:()=>coTestStart()}]);return;}
-  coRun(c.phase===3&&c.level>0?'Warm-up: a little slower than last time.':'');
+  coRun('');
 }
 function coListen(from,to,next,title,sub,hands,auto,extra){
   CO.mode='listen';CO.afterListen=next;
@@ -1423,8 +1433,12 @@ function coAnalyse(pauses){
   const bars={},get=m=>bars[m]||(bars[m]={wrong:0,pause:0,timing:0,staffs:new Set()});
   S.steps.forEach(st=>{
     if(st.errs||st.hadErr){const b=get(st.measure);b.wrong++;(st.errStaff||new Set()).forEach(s=>b.staffs.add(s));}
-    if(st.timing!=null&&met.spb&&Math.abs(st.timing/1000/met.spb)>.35)get(st.measure).timing++;
   });
+  // timing: relative to your usual offset (latency); a bar is flagged only for 2+ clearly off notes or one very off note
+  const timed=S.steps.filter(st=>st.timing!=null);
+  if(timed.length&&met.spb){const off=timed.length>=3?timingOffset(timed.map(x=>x.timing)):0,per={};
+    timed.forEach(st=>{const b=Math.abs((st.timing-off)/1000/met.spb);if(b>.45)(per[st.measure]=per[st.measure]||[]).push(b);});
+    Object.entries(per).forEach(([m,a])=>{if(a.length>=2||Math.max(...a)>.75)get(+m).timing=a.length;});}
   if(pauses){ // long pauses to find a note (only without the metronome)
     const g=[];for(let i=1;i<S.steps.length;i++){const a=S.steps[i-1],b=S.steps[i];if(a.doneAt&&b.doneAt){const gap=b.doneAt-a.doneAt;g.push({i,gap,per:gap/Math.max(.5,b.t-a.t)});}}
     const med=g.map(x=>x.per).sort((a,b)=>a-b)[Math.floor(g.length/2)]||0;
@@ -1435,14 +1449,14 @@ function coAnalyse(pauses){
 function coAfterRun(){
   if(CO.mode==='test'){coTestResult();return true;}
   const c=coRec(),bars=coAnalyse(CO.mode==='run'&&c.phase<3),bad=Object.keys(bars).map(Number);
-  if(CO.mode==='fix'){coFixResult(!bad.length);return true;}
+  if(CO.mode==='fix'){coFixResult(!bad.length,bad,bars);return true;}
   if(CO.mode!=='run')return true;
   const go=()=>{
     if(!bad.length){coRunClean();return;}
     const score=m=>bars[m].wrong*2+bars[m].timing+bars[m].pause;
     CO.queue=bad.slice().sort((a,b)=>score(b)-score(a)||a-b);CO.info=bars;
     let note=`Next: let's polish bar${bad.length>1?'s':''} ${bad.slice().sort((a,b)=>a-b).map(m=>m+1).join(', ')}.`;
-    if(c.phase===3){CO.runFails++;if(CO.runFails>=2&&CO.level>0){CO.level--;CO.runFails=0;note+=' We\'ll also slow down a little.';}}
+    if(c.phase===3){CO.runFails++;if(CO.runFails>=3&&CO.level>0){CO.level--;CO.runFails=0;note+=' We\'ll also slow down a little.';}}
     const tot=new Set(S.steps.map(x=>x.measure)).size;
     coCelebrate(`👏 Good run — ${tot-bad.length} of ${tot} bars clean`,note,()=>coNextBar(''));
   };
@@ -1533,7 +1547,7 @@ function coPct(c){
   if(c.phase<3)return c.phase===0?(c.heard?10:0):c.phase===1?25:45;
   return Math.round(c.cleanDays.length?95:60+30*(L.length>1?c.level/(L.length-1):1));
 }
-function coStageName(c){c=c||coRec();return c.learned?'Learned 🏆':c.phase<3?PH[c.phase].name:`With the beat · ${coSpeedName(Math.min(c.level,coLevels().length-1))} speed`;}
+function coStageName(c){c=c||coRec();return c.learned?'Learned 🏆':c.phase<3?PH[c.phase].name:'With the beat · '+coSpeedName(Math.min(c.level,coLevels().length-1)).replace(/( speed)?$/,' speed');}
 function coTrack(){ // one entry per day: where you started and where you are now
   const c=coRec(),p=coPct(c),day=new Date().toDateString();c.hist=c.hist||[];
   let last=c.hist[c.hist.length-1];
@@ -1579,7 +1593,7 @@ function coTry(note){
   const sub=(CO.fixStep==='connect'?'Play from the bar before into the bar after, so the joins feel smooth.':`Play it cleanly ${need} times in a row.`)+(c.phase===3?' Wait for the count-in.':' Slowly is fine.');
   coShow(head,sub,[],note,need>1?`${CO.streak} of ${need} ✓`:'');
 }
-function coFixResult(clean){
+function coFixResult(clean,badBars,bars){
   CO.tries++;
   if(clean){
     CO.streak++;
@@ -1590,6 +1604,10 @@ function coFixResult(clean){
   }
   CO.streak=0;CO.barFails++;
   let note='Not quite — try again, nice and slowly.';
+  if(CO.fixStep==='connect'&&badBars&&badBars.length&&!badBars.includes(CO.bar)){ // the slip was in a neighbouring bar, not this one
+    const nb=badBars[0];CO.improved.push({bar:CO.bar,tries:CO.tries});
+    CO.queue=CO.queue.filter(b=>b!==nb);CO.queue.unshift(nb);CO.info=CO.info||{};CO.info[nb]=bars[nb];
+    coNextBar(`Bar ${CO.bar+1} was clean ✓ — the slip was in bar ${nb+1}, so let's work on that one.`);return;}
   if(CO.fixStep==='connect'){CO.fixStep='bar';note=`The join is tricky — back to just bar ${CO.bar+1} for a moment.`;}
   if(CO.barFails>=5&&!CO.offered){
     CO.offered=true;coTry();
@@ -1623,7 +1641,7 @@ function logPress(ok){const d=dayRec();if(!d)return;const now=Date.now();
   if(lastPress&&now-lastPress<60000)d.ms+=now-lastPress; // count time between key presses, ignoring breaks over a minute
   lastPress=now;if(ok)d.n++;else d.w++;clearTimeout(logPress.t);logPress.t=setTimeout(dbSave,1500);}
 const PHN=['Right hand','Left hand','Both hands','With the beat'];
-function levelsOf(c){const t=Math.max(40,+c.target||80),a=[];for(let b=40;b<t;b+=10)a.push(b);a.push(t);return a;}
+function levelsOf(c){return tempoLadder(c.target);}
 function songDays(r){
   const s=new Set();
   Object.entries(r.days||{}).forEach(([k,d])=>{if(d.n+d.w+d.runs>0)s.add(k);});
@@ -1651,7 +1669,7 @@ function songMetrics(id){
   let pct=0,stage='Not started';
   if(c){const L=levelsOf(c),lv=Math.min(c.level||0,L.length-1);
     pct=c.learned?100:c.phase<3?(c.phase===0?(c.heard?10:0):c.phase===1?25:45):Math.round((c.cleanDays||[]).length?95:60+30*(L.length>1?lv/(L.length-1):1));
-    stage=c.learned?'Learned 🏆':c.phase<3?PHN[c.phase]:'With the beat · '+(lv>=L.length-1?'book speed':L[lv]<=50?'slow':'steady');
+    stage=c.learned?'Learned 🏆':c.phase<3?PHN[c.phase]:'With the beat · '+(lv>=L.length-1?'book speed':L[lv]+' BPM');
     if(!days.length&&pct===0)stage='Not started';}
   else if(ss.length||days.length){pct=Math.min(45,Math.round(Math.max(0,...ss.map(x=>x.pct))*.45));stage='Free practice';}
   const dl=Object.values((r&&r.days)||{}),n=dl.reduce((a,d)=>a+d.n,0),w=dl.reduce((a,d)=>a+d.w,0),ms=dl.reduce((a,d)=>a+d.ms,0);
