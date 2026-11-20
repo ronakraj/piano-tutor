@@ -53,6 +53,7 @@ textarea{width:100%;height:90px;font-family:monospace;font-size:12px}
 .qcard{display:flex;gap:12px;align-items:center;font-size:16px;margin:6px 0 10px}
 .qopts{display:grid;grid-template-columns:1fr 1fr;gap:8px}.qopts button.right{background:#bbf7d0;border-color:#16a34a}.qopts button.wrong{background:#fecaca;border-color:#dc2626}
 #qfb{margin-top:10px}
+#rq{margin-top:10px;padding:12px;border:2px solid #2563eb;border-radius:10px;background:#eff6ff}#rq .qopts button{display:flex;align-items:center;gap:6px;justify-content:center}#rq .qopts button.right{background:#bbf7d0;border-color:#16a34a}#rq .qopts button.wrong{background:#fecaca;border-color:#dc2626}#rqfb{margin-top:10px}
 body:not(.coach) #coach{display:none}
 body.coach .free{display:none!important}
 body.coach #stats{display:none}
@@ -100,6 +101,24 @@ header{background:#292524}header select,header button{background:#44403c;color:#
 #coach .up{color:#15803d;font-weight:600}#coach .down{color:#b45309}#coach .flat{color:#64748b}
 #drawer{top:50%;left:50%;right:auto;bottom:auto;width:min(580px,94vw);max-height:86vh;border-radius:16px;padding:0 18px 20px;transform:translate(-50%,-46%) scale(.97);opacity:0;visibility:hidden;transition:transform .18s,opacity .18s,visibility .18s;box-shadow:0 24px 70px rgba(30,20,10,.35)}
 #drawer.open{transform:translate(-50%,-50%);opacity:1;visibility:visible}#drawer .dhead{border-radius:16px 16px 0 0}
+
+#dashPane{top:50%;left:50%;right:auto;bottom:auto;width:min(980px,96vw);max-height:90vh;border-radius:16px;padding:0 18px 20px;transform:translate(-50%,-46%) scale(.97);opacity:0;visibility:hidden;transition:transform .18s,opacity .18s,visibility .18s;box-shadow:0 24px 70px rgba(30,20,10,.35);background:#fcfbf8}
+#dashPane.open{transform:translate(-50%,-50%);opacity:1;visibility:visible}#dashPane .dhead{background:#fcfbf8;border-radius:16px 16px 0 0}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:4px 0 14px}
+.tile{background:#fff;border:1px solid #e7e5df;border-radius:10px;padding:10px 12px}.tile b{display:block;font-size:24px;line-height:1.15;color:#0b0b0b}.tile span{font-size:12px;color:#57534e}.tile small{display:block;font-size:12px;color:#78716c;margin-top:2px}
+.dsec{background:#fff;border:1px solid #e7e5df;border-radius:10px;padding:12px 14px;margin:0 0 12px}.dsec h3{margin:0 0 8px;font-size:15px}
+.srow{display:grid;grid-template-columns:minmax(150px,2fr) minmax(140px,2fr) repeat(4,minmax(64px,1fr));gap:8px;align-items:center;padding:9px 6px;border-bottom:1px solid #f1efe9;cursor:pointer;font-size:14px}
+.srow:hover{background:#f7f5f0}.srow.hdr{cursor:default;font-size:12px;color:#78716c;background:none;font-weight:600}.srow .num{text-align:right;font-variant-numeric:tabular-nums}
+.jbar{height:8px;border-radius:99px;background:#e7e5df;overflow:hidden;flex:1}.jbar i{display:block;height:100%;border-radius:99px;background:#2a78d6}
+.jwrap{display:flex;align-items:center;gap:8px}.jwrap em{font-style:normal;font-size:12px;color:#57534e;white-space:nowrap}
+.stage{display:inline-block;font-size:12px;padding:2px 9px;border-radius:99px;background:#ede9fe;color:#5b21b6;font-weight:600}
+.barmap{display:flex;flex-wrap:wrap;gap:4px}.bm{width:38px;height:34px;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:1.1;color:#fff;font-weight:600}
+.bm.strong{background:#0ca30c}.bm.shaky{background:#fab219;color:#0b0b0b}.bm.weak{background:#d03b3b}.bm.new{background:#f1efe9;color:#78716c;border:1px dashed #c3c2b7}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:#57534e;margin-top:8px}.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media (max-width:720px){.cols2{grid-template-columns:1fr}.srow{grid-template-columns:1fr 1fr}.srow .opt{display:none}}
+.cal{display:block}.calnote{font-size:12px;color:#78716c;margin-top:4px}
+.blist{font-size:14px;margin:4px 0}.blist button{margin:3px 4px 0 0}
+.dtip{font-size:12px;color:#57534e;min-height:16px;margin-top:4px}
 </style>
 </head>
 <body class="coach">
@@ -110,6 +129,7 @@ header{background:#292524}header select,header button{background:#44403c;color:#
   <span style="flex:1"></span>
   <button id="btnPlay" title="Hear the song">▶ Listen</button>
   <button id="btnMidi" title="Connect your piano"><span id="midiStatus" class="dot off"></span><span id="midiName">Connect piano</span></button>
+  <button id="btnDash" title="My progress">📊</button>
   <button id="btnWords" title="Music words">📖</button>
   <button id="btnMore" title="Settings">⚙</button>
 </header>
@@ -191,13 +211,18 @@ header{background:#292524}header select,header button{background:#44403c;color:#
     <p><select id="midiSel" style="display:none"></select> <span id="midiLast" class="hint">last MIDI: –</span></p>
   </details>
 </aside>
+<aside id="dashPane" class="pane" aria-label="My progress">
+  <div class="dhead"><b id="dashTitle">📊 My progress</b><span><button id="dashBack" style="display:none">◀ All songs</button> <button class="paneClose" title="Close">✕</button></span></div>
+  <div id="dashBody"></div>
+</aside>
 <aside id="wordsPane" class="pane" aria-label="Music words">
   <div class="dhead"><b>📖 Music words</b><button class="paneClose" title="Close">✕</button></div>
   <div id="words">
     <label class="lbltog"><input type="checkbox" id="labels"> Label these on the music</label>
     <p class="hint">Tap a label on the music to jump to it here.</p>
-    <button id="btnQuiz" class="primary">Test me</button> <span id="wordProg" class="hint"></span>
+    <button id="btnQuiz" class="primary">Test me</button> <button id="btnRq">🥁 Count it</button> <span id="wordProg" class="hint"></span>
     <div id="quiz" style="display:none"></div>
+    <div id="rq" style="display:none"></div>
     <div id="wordList"></div>
   </div>
 </aside>
@@ -640,11 +665,11 @@ function noteOn(m){
   const req=new Set(st.notes.map(n=>n.midi));
   if(req.has(m)){
     keyMark.set(m,'ok');
-    const had=S.hit.has(m);S.hit.add(m);
+    const had=S.hit.has(m);S.hit.add(m);if(!had)logPress(true);
     if(S.hit.size===req.size){advance();return;}
     if(!had)say('✓ Got it — still waiting for: '+st.notes.filter(n=>!S.hit.has(n.midi)).map(n=>n.name).join(' '),'good');
   }else{
-    keyMark.set(m,'bad');st.errs++;S.errTotal++;const tg=nearestMissing(m,st);if(tg)tg.missed=true;(st.errStaff||(st.errStaff=new Set())).add(tg?tg.staff:(m>=60?0:1));
+    keyMark.set(m,'bad');logPress(false);st.errs++;S.errTotal++;const tg=nearestMissing(m,st);if(tg)tg.missed=true;(st.errStaff||(st.errStaff=new Set())).add(tg?tg.staff:(m>=60?0:1));
     say(describeMiss(m,st),'bad');showGhost(m,st);
   }
   refreshAll();
@@ -995,7 +1020,8 @@ function noteMeasureProgress(st){
 function recordSession(){
   const r=songRec();if(!r||!S.steps.length)return;
   const clean=S.steps.filter(x=>!bad(x)).length;
-  r.sessions=(r.sessions||[]).concat({ts:Date.now(),pct:Math.round(100*clean/S.steps.length)}).slice(-50);
+  const pct=Math.round(100*clean/S.steps.length);r.sessions=(r.sessions||[]).concat({ts:Date.now(),pct}).slice(-50);
+  const d=dayRec();if(d){d.runs++;d.best=Math.max(d.best||0,pct);}
   r.updated=Date.now();dbSave();updateProgressUI();
 }
 function troubleList(){
@@ -1096,14 +1122,16 @@ const WORDS=[
  {t:'Middle C',d:'The C closest to the middle of the keyboard. On paper it sits on a short line just below the treble staff (or just above the bass staff).',tip:'Home base — the meeting point of both hands.',pic:mini(lg(60,52)+hd(60,52,0)+sm(60,52))},
  {t:'Ledger line',d:'A short extra line for a note that is too high or too low to fit on the staff.',tip:'A little ladder rung added above or below the staff.',pic:mini(lg(45,4)+hd(45,4,0)+lg(80,52)+hd(80,52,0))},
  {t:'Bar line',d:'A straight up-and-down line that divides the staff into measures.',tip:'Bars keep the beats in tidy boxes.',pic:mini('<line x1="60" x2="60" y1="12" y2="44" stroke="#222" stroke-width="1.5"/>')},
- {t:'Measure',a:'bar',d:'The space between two bar lines. Each one holds the number of beats the time signature asks for.',tip:'In 4/4, count 1-2-3-4 in every measure.'},
+ {t:'Measure',a:'bar',d:'The space between two bar lines. Bar lines divide the music into measures, and the notes in each measure add up to the number of counts the time signature asks for — 4 counts in 4/4.',tip:'In 4/4, count 1-2-3-4 in every measure.'},
  {t:'Double bar line',d:'A thin line and a thick line together at the very end of the piece.',tip:'Thick line = full stop.',pic:mini('<line x1="100" x2="100" y1="12" y2="44" stroke="#222" stroke-width="1.2"/><rect x="105" y="12" width="4" height="32" fill="#222"/>')},
- {t:'Time signature',d:'The two numbers at the start. Top number = how many beats in each measure; bottom number = which note gets one beat (4 means a quarter note).',tip:'Top = how many; bottom = what kind.',pic:mini('<text x="60" y="27" font-size="19" font-weight="700" text-anchor="middle" font-family="serif">4</text><text x="60" y="43" font-size="19" font-weight="700" text-anchor="middle" font-family="serif">4</text>')},
- {t:'Beat',d:'The steady pulse of the music — what you tap your foot to and count.',tip:'The metronome clicks the beat for you.'},
+ {t:'Time signature',d:'The numbers at the start of the music. Top number = how many beats (counts) in each measure; bottom number = which kind of note gets one beat. 4/4 means 4 beats in each measure, and the quarter note gets 1 beat.',tip:'Top = how many; bottom = what kind.',pic:mini('<text x="60" y="27" font-size="19" font-weight="700" text-anchor="middle" font-family="serif">4</text><text x="60" y="43" font-size="19" font-weight="700" text-anchor="middle" font-family="serif">4</text>')},
+ {t:'Beat',a:'count',d:'The steady pulse of the music — what you tap your foot to and count.',tip:'The metronome clicks the beat for you.'},
+ {t:'Counting',d:'Saying the beat numbers out loud as you play: “1 - 2 - 3 - 4” in every measure of 4/4. Hold each note for as many numbers as it gets counts.',tip:'Count out loud — it stops long notes being cut short.'},
+ {t:'Note values',d:'How long each note lasts in 4/4: quarter = 1 count, half = 2 counts, whole = 4 counts. 4 quarters = 2 halves = 1 whole = one full measure.',tip:'Each one doubles: 1 → 2 → 4.',pic:mini(hd(25,36,0)+sm(25,36)+hd(60,36,1)+sm(60,36)+hd(95,36,1)+'<text x="25" y="56" font-size="10" text-anchor="middle" fill="#5b21b6">1</text><text x="60" y="56" font-size="10" text-anchor="middle" fill="#5b21b6">2</text><text x="95" y="56" font-size="10" text-anchor="middle" fill="#5b21b6">4</text>')},
  {t:'Tempo',d:'How fast the music goes. Written in words above the music (“Moderately fast”) or as BPM — beats per minute.',tip:'Tempo = time = speed.'},
- {t:'Whole note',d:'A hollow note with no stem. Lasts 4 beats.',tip:'Whole = a whole measure of 4/4.',pic:mini(hd(60,28,1))},
- {t:'Half note',d:'A hollow note with a stem. Lasts 2 beats.',tip:'Half of a whole note.',pic:mini(hd(60,32,1)+sm(60,32))},
- {t:'Quarter note',d:'A filled-in note with a stem. Lasts 1 beat.',tip:'Four of them fill a 4/4 measure.',pic:mini(hd(60,32,0)+sm(60,32))},
+ {t:'Whole note',d:'A hollow note with no stem. Lasts 4 counts — count “1 - 2 - 3 - 4”.',tip:'Whole = a whole measure of 4/4.',pic:mini(hd(60,28,1))},
+ {t:'Half note',d:'A hollow note with a stem. Lasts 2 counts — count “1 - 2”.',tip:'Half of a whole note.',pic:mini(hd(60,32,1)+sm(60,32))},
+ {t:'Quarter note',d:'A filled-in note with a stem. Lasts 1 count — count “1”.',tip:'Four of them fill a 4/4 measure.',pic:mini(hd(60,32,0)+sm(60,32))},
  {t:'Eighth note',d:'A filled-in note with a stem and a flag. Lasts half a beat, so two fit in one beat.',tip:'The flag makes it fly by twice as fast.',pic:mini(hd(60,36,0)+sm(60,36)+'<path d="M64.6 10 c0 8 10 9 6 22" stroke="#222" fill="none" stroke-width="1.5"/>')},
  {t:'Dotted note',d:'A dot after a note adds half its length again. A dotted half note lasts 3 beats.',tip:'Dot = “and half as much again”.',pic:mini(hd(55,32,1)+sm(55,32)+'<circle cx="67" cy="30" r="1.8" fill="#222"/>')},
  {t:'Rest',d:'A sign for silence. Each note length has a matching rest. The whole rest hangs down from the 4th line; the half rest sits on the middle line.',tip:'Half rest looks like a hat; whole rest looks like a hole.',pic:mini('<rect x="34" y="20" width="14" height="5" fill="#222"/><rect x="74" y="23" width="14" height="5" fill="#222"/>')},
@@ -1149,6 +1177,48 @@ $('quiz').onclick=e=>{
 };
 $('btnQuiz').onclick=()=>{const q=$('quiz');const show=q.style.display==='none';q.style.display=show?'block':'none';$('btnQuiz').textContent=show?'Stop test':'Test me';if(show)quizNext();};
 renderWords();
+
+// ---------- count it: note values & completing 4/4 measures (Alfred's "Writing in 4/4 Time") ----------
+const NV={q:{n:'Quarter note',c:1,say:'1'},h:{n:'Half note',c:2,say:'1 - 2'},w:{n:'Whole note',c:4,say:'1 - 2 - 3 - 4'}};
+const noteSvg=(k,x,y)=>k==='w'?hd(x,y,1):hd(x,y,k==='h')+sm(x,y);
+const btnPic=k=>`<svg viewBox="0 0 24 40" width="18" height="30">${noteSvg(k,9,k==='w'?20:32)}</svg>`;
+function barPic(items){ // a 4/4 measure on G; '?' marks the missing note
+  const lines=[12,20,28,36,44].map(y=>`<line x1="4" x2="236" y1="${y}" y2="${y}" stroke="#94a3b8"/>`).join('');
+  let x=44,out='';const unit=180/4;
+  items.forEach(k=>{const c=k==='?'?RQ.missing:NV[k].c,w=c*unit,cx=x+12;
+    if(k==='?')out+=`<rect x="${x+2}" y="4" width="${w-6}" height="48" rx="6" fill="#fff" stroke="#2563eb" stroke-dasharray="4 3"/><text x="${x+w/2-1}" y="30" font-size="20" font-weight="700" text-anchor="middle" dominant-baseline="central" fill="#2563eb">?</text>`;
+    else out+=noteSvg(k,cx,36);
+    x+=w;});
+  return `<svg viewBox="0 -2 240 60" style="width:100%;max-width:380px;height:auto">${lines}<text x="22" y="27" font-size="19" font-weight="700" text-anchor="middle" font-family="serif">4</text><text x="22" y="43" font-size="19" font-weight="700" text-anchor="middle" font-family="serif">4</text><line x1="236" x2="236" y1="12" y2="44" stroke="#222" stroke-width="1.5"/>${out}</svg>`;
+}
+let RQ=null,RS={streak:0,best:0};try{RS=Object.assign(RS,JSON.parse(localStorage.getItem('pianoTutor.rhythm')||'{}'));}catch(e){}
+const rqSave=()=>{try{localStorage.setItem('pianoTutor.rhythm',JSON.stringify(RS));}catch(e){}};
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function rqNext(){
+  const head=`<div style="font-size:13px;color:#64748b">🔥 ${RS.streak} in a row · best ${RS.best}</div>`;
+  if(Math.random()<.35){ // how many counts?
+    const k=pick(['q','h','w']);RQ={kind:'count',ans:String(NV[k].c),k};
+    $('rq').innerHTML=head+`<div class="qcard"><div class="wpic">${mini(noteSvg(k,60,k==='w'?28:36))}</div><div>In 4/4 time, how many counts does this note get?</div></div><div class="qopts">${[1,2,3,4].map(n=>`<button data-a="${n}">${n}</button>`).join('')}</div><div id="rqfb"></div>`;
+  }else{ // complete the measure with one note
+    const m=pick([1,1,2,2,4]);let rest=4-m;const items=[];
+    while(rest>0){const k=rest>=2&&Math.random()<.5?'h':'q';items.push(k);rest-=NV[k].c;}
+    items.splice(Math.floor(Math.random()*(items.length+1)),0,'?');
+    RQ={kind:'fill',missing:m,ans:{1:'q',2:'h',4:'w'}[m],items};
+    $('rq').innerHTML=head+`<div style="margin:6px 0">Add just <b>one</b> note so the measure adds up to <b>4 counts</b>:</div><div class="wpic" style="background:none">${barPic(items)}</div><div class="qopts" style="margin-top:8px">${['q','h','w'].map(k=>`<button data-a="${k}">${btnPic(k)} ${NV[k].n}</button>`).join('')}</div><div id="rqfb"></div>`;
+  }
+}
+$('rq').onclick=e=>{
+  const b=e.target.closest('button[data-a]');if(!b||!RQ||RQ.done)return;RQ.done=true;
+  const ok=b.dataset.a===RQ.ans;RS.streak=ok?RS.streak+1:0;RS.best=Math.max(RS.best,RS.streak);rqSave();
+  $('rq').querySelectorAll('button[data-a]').forEach(x=>{if(x.dataset.a===RQ.ans)x.classList.add('right');else if(x===b)x.classList.add('wrong');});
+  let why;
+  if(RQ.kind==='count'){const v=NV[RQ.k];why=`A ${v.n.toLowerCase()} gets <b>${v.c}</b> count${v.c>1?'s':''} — count “${v.say}”.`;}
+  else{const v=NV[RQ.ans],have=RQ.items.filter(k=>k!=='?').map(k=>NV[k].c);
+    why=have.length?`You have ${have.join(' + ')}${have.length>1?` = ${4-v.c}`:''} count${4-v.c>1?'s':''}, so you need <b>${v.c}</b> more: a <b>${v.n.toLowerCase()}</b>.`:`The measure is empty, so one note must last all 4 counts: a <b>whole note</b>.`;}
+  $('rqfb').innerHTML=(ok?'✓ Yes! ':'✗ Not quite. ')+why+` <button id="rqNextBtn" class="primary">Next</button>`;
+  $('rqNextBtn').onclick=rqNext;
+};
+$('btnRq').onclick=()=>{const q=$('rq');const show=q.style.display==='none';q.style.display=show?'block':'none';$('btnRq').textContent=show?'Stop counting':'🥁 Count it';if(show)rqNext();};
 
 // labels drawn on the score (first place each thing appears); tap one to read about it
 function drawLabels(){
@@ -1543,12 +1613,150 @@ document.querySelectorAll('#modeBtns button').forEach(b=>b.onclick=()=>setMode(b
 (()=>{let m='coach';try{m=localStorage.getItem('pianoTutor.mode')||'coach';}catch(e){}
   document.body.classList.toggle('coach',m==='coach');document.querySelectorAll('#modeBtns button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));})();
 
+
+// ---------- progress dashboard: per-day log + metrics for every song ----------
+const dayKey=(d=new Date())=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const keyDate=k=>{const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d);};
+function dayRec(){const r=S&&songRec();if(!r)return null;r.days=r.days||{};const k=dayKey();return r.days[k]||(r.days[k]={n:0,w:0,ms:0,runs:0,best:null});}
+let lastPress=0;
+function logPress(ok){const d=dayRec();if(!d)return;const now=Date.now();
+  if(lastPress&&now-lastPress<60000)d.ms+=now-lastPress; // count time between key presses, ignoring breaks over a minute
+  lastPress=now;if(ok)d.n++;else d.w++;clearTimeout(logPress.t);logPress.t=setTimeout(dbSave,1500);}
+const PHN=['Right hand','Left hand','Both hands','With the beat'];
+function levelsOf(c){const t=Math.max(40,+c.target||80),a=[];for(let b=40;b<t;b+=10)a.push(b);a.push(t);return a;}
+function songDays(r){
+  const s=new Set();
+  Object.entries(r.days||{}).forEach(([k,d])=>{if(d.n+d.w+d.runs>0)s.add(k);});
+  (r.sessions||[]).forEach(x=>s.add(dayKey(new Date(x.ts))));
+  const c=r.coach;if(c){(c.hist||[]).forEach(h=>{if(h.p!==h.start)s.add(dayKey(new Date(h.d)));});(c.cleanDays||[]).forEach(d=>s.add(dayKey(new Date(d))));}
+  return [...s].sort();
+}
+const barCache={};
+function nBarsOf(id,r){
+  if(r&&r.nBars)return r.nBars;
+  if(id.startsWith('demo:')&&DEMOS[id.slice(5)]){if(!barCache[id])try{barCache[id]=parseScore(DEMOS[id.slice(5)]()).measures.length;}catch(e){barCache[id]=0;}return barCache[id];}
+  const ks=Object.keys((r&&r.measures)||{}).map(Number);return ks.length?Math.max(...ks)+1:0;
+}
+function barStates(id,r){
+  const n=nBarsOf(id,r),out=[];
+  for(let i=0;i<n;i++){const m=r&&r.measures&&r.measures[i];
+    if(!m||!m.plays){out.push({i,st:'new'});continue;}
+    const miss=m.recent.filter(x=>x===0).length;
+    out.push({i,m,miss,st:miss>=2?'weak':(m.recent.length>=2&&miss===0)?'strong':'shaky'});}
+  return out;
+}
+function songMetrics(id){
+  const r=DB.songs[id],title=r?r.title:(id.startsWith('demo:')?[...$('demo').options].find(o=>'demo:'+o.value===id)?.textContent.replace(/\s*\(.*\)$/,'')||id:id);
+  const days=r?songDays(r):[],ss=(r&&r.sessions)||[],c=r&&r.coach,bars=barStates(id,r);
+  let pct=0,stage='Not started';
+  if(c){const L=levelsOf(c),lv=Math.min(c.level||0,L.length-1);
+    pct=c.learned?100:c.phase<3?(c.phase===0?(c.heard?10:0):c.phase===1?25:45):Math.round((c.cleanDays||[]).length?95:60+30*(L.length>1?lv/(L.length-1):1));
+    stage=c.learned?'Learned 🏆':c.phase<3?PHN[c.phase]:'With the beat · '+(lv>=L.length-1?'book speed':L[lv]<=50?'slow':'steady');
+    if(!days.length&&pct===0)stage='Not started';}
+  else if(ss.length||days.length){pct=Math.min(45,Math.round(Math.max(0,...ss.map(x=>x.pct))*.45));stage='Free practice';}
+  const dl=Object.values((r&&r.days)||{}),n=dl.reduce((a,d)=>a+d.n,0),w=dl.reduce((a,d)=>a+d.w,0),ms=dl.reduce((a,d)=>a+d.ms,0);
+  const mp=Object.values((r&&r.measures)||{}),plays=mp.reduce((a,m)=>a+m.plays,0),badP=mp.reduce((a,m)=>a+m.bad,0);
+  return {id,r,title,days,ss,c,bars,pct,stage,notes:n,wrong:w,acc:n+w?Math.round(100*n/(n+w)):null,ms,
+    barClean:plays?Math.round(100*(plays-badP)/plays):null,barPlays:plays,
+    best:ss.length?Math.max(...ss.map(x=>x.pct)):null,latest:ss.length?ss[ss.length-1].pct:null,
+    weak:bars.filter(b=>b.st==='weak'),strong:bars.filter(b=>b.st==='strong'),shaky:bars.filter(b=>b.st==='shaky'),fresh:bars.filter(b=>b.st==='new'),
+    last:days.length?days[days.length-1]:null,first:days.length?days[0]:null};
+}
+function allSongIds(){
+  const ids=[...$('demo').options].map(o=>'demo:'+o.value);
+  Object.keys(DB.songs).forEach(id=>{if(!ids.includes(id)&&(DB.songs[id].xml||id.startsWith('demo:')))ids.push(id);});
+  return ids;
+}
+const fmtDur=ms=>{const m=Math.round(ms/60000);return m<60?m+' min':Math.floor(m/60)+' h '+(m%60)+' min';};
+const fmtDay=k=>{if(!k)return '—';const d=keyDate(k),t=dayKey(),y=dayKey(new Date(Date.now()-864e5));return k===t?'Today':k===y?'Yesterday':d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});};
+function streakOf(set){let d=new Date(),k=dayKey(d);if(!set.has(k)){d=new Date(Date.now()-864e5);k=dayKey(d);if(!set.has(k))return 0;}
+  let n=0;while(set.has(dayKey(d))){n++;d=new Date(d.getFullYear(),d.getMonth(),d.getDate()-1);}return n;}
+const tile=(v,label,sub)=>`<div class="tile"><span>${label}</span><b>${v}</b>${sub?`<small>${sub}</small>`:''}</div>`;
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// calendar: last 12 weeks, Monday-first columns; value per day -> blue ramp
+function calSvg(valOf,tipOf,weeks=12){
+  const ramp=['#f1efe9','#b7d3f6','#6da7ec','#2a78d6','#184f95'],cs=14,g=3,today=new Date();
+  const dow=(today.getDay()+6)%7,start=new Date(today.getFullYear(),today.getMonth(),today.getDate()-dow-(weeks-1)*7);
+  let o='',vals=[];
+  for(let w=0;w<weeks;w++)for(let d=0;d<7;d++){const dt=new Date(start.getFullYear(),start.getMonth(),start.getDate()+w*7+d);if(dt>today)continue;vals.push(valOf(dayKey(dt)));}
+  const max=Math.max(1,...vals);
+  for(let w=0;w<weeks;w++){
+    const wd=new Date(start.getFullYear(),start.getMonth(),start.getDate()+w*7);
+    if(wd.getDate()<=7)o+=`<text x="${28+w*(cs+g)}" y="9" font-size="9" fill="#78716c">${wd.toLocaleDateString(undefined,{month:'short'})}</text>`;
+    for(let d=0;d<7;d++){const dt=new Date(start.getFullYear(),start.getMonth(),start.getDate()+w*7+d);if(dt>today)continue;
+      const k=dayKey(dt),v=valOf(k),lv=v?Math.min(4,1+Math.floor(3*v/max-.0001)):0;
+      o+=`<rect x="${28+w*(cs+g)}" y="${14+d*(cs+g)}" width="${cs}" height="${cs}" rx="3" fill="${ramp[lv]}" ${k===dayKey()?'stroke="#0b0b0b" stroke-width="1.2"':''} data-tip="${esc(fmtDay(k)+': '+tipOf(k,v))}"><title>${esc(fmtDay(k)+': '+tipOf(k,v))}</title></rect>`;}}
+  ['Mon','','Wed','','Fri','','Sun'].forEach((t,d)=>{if(t)o+=`<text x="0" y="${25+d*(cs+g)}" font-size="9" fill="#78716c">${t}</text>`;});
+  return `<svg class="cal" viewBox="0 0 ${28+weeks*(cs+g)} ${14+7*(cs+g)}" style="width:100%;max-width:${(28+weeks*(cs+g))*1.6}px;height:auto">${o}</svg>`;
+}
+// single-series line chart (0-100%), hover/tap points for values
+function lineSvg(pts,label){ // pts: [{x:label,y:0-100}]
+  if(pts.length<2)return `<p class="hint">${pts.length?`One ${label} so far (${pts[0].y}%). The chart appears after the next one.`:`No ${label}s yet.`}</p>`;
+  const W2=420,H=150,l=34,rr=10,t=10,b=24,X=i=>l+i*(W2-l-rr)/(pts.length-1),Y=v=>t+(100-v)*(H-t-b)/100;
+  let o='';[0,50,100].forEach(v=>o+=`<line x1="${l}" x2="${W2-rr}" y1="${Y(v)}" y2="${Y(v)}" stroke="${v?'#e1e0d9':'#c3c2b7'}"/><text x="${l-6}" y="${Y(v)+3}" font-size="10" text-anchor="end" fill="#78716c">${v}%</text>`);
+  o+=`<polyline points="${pts.map((p,i)=>X(i)+','+Y(p.y)).join(' ')}" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round"/>`;
+  pts.forEach((p,i)=>{o+=`<circle cx="${X(i)}" cy="${Y(p.y)}" r="4" fill="#2a78d6" stroke="#fff" stroke-width="2"/><circle cx="${X(i)}" cy="${Y(p.y)}" r="12" fill="transparent" data-tip="${esc(p.x+': '+p.y+'%')}"><title>${esc(p.x+': '+p.y+'%')}</title></circle>`;});
+  [0,pts.length-1].forEach(i=>o+=`<text x="${X(i)}" y="${H-6}" font-size="10" text-anchor="${i?'end':'start'}" fill="#78716c">${esc(pts[i].x)}</text>`);
+  const lp=pts[pts.length-1];o+=`<text x="${X(pts.length-1)-6}" y="${Y(lp.y)-8}" font-size="11" font-weight="700" text-anchor="end" fill="#0b0b0b">${lp.y}%</text>`;
+  return `<svg viewBox="0 0 ${W2} ${H}" style="width:100%;height:auto">${o}</svg>`;
+}
+const jbar=(p,lbl)=>`<div class="jwrap"><div class="jbar"><i style="width:${p}%"></i></div><em>${p}%${lbl?' · '+lbl:''}</em></div>`;
+let dashSong=null;
+function openDash(id){dashSong=id||null;renderDash();openPane('dashPane');}
+function renderDash(){dashSong?renderSongDash(dashSong):renderAllDash();$('dashBody').scrollTop=0;}
+function renderAllDash(){
+  $('dashBack').style.display='none';$('dashTitle').textContent='📊 My progress';
+  const ms=allSongIds().map(songMetrics),started=ms.filter(m=>m.days.length||m.pct>0);
+  const daySongs={};ms.forEach(m=>m.days.forEach(k=>(daySongs[k]=daySongs[k]||[]).push(m.title)));
+  const set=new Set(Object.keys(daySongs)),wk=[...Array(7)].map((_,i)=>dayKey(new Date(Date.now()-i*864e5))).filter(k=>set.has(k)).length;
+  const tot=ms.reduce((a,m)=>a+m.ms,0),runs=ms.reduce((a,m)=>a+m.ss.length,0),avg=started.length?Math.round(started.reduce((a,m)=>a+m.pct,0)/started.length):0;
+  const plays=ms.reduce((a,m)=>a+m.barPlays,0),cleanAll=plays?Math.round(ms.reduce((a,m)=>a+(m.barClean||0)*m.barPlays,0)/plays):null;
+  const weakAll=ms.reduce((a,m)=>a+m.weak.length,0),learned=ms.filter(m=>m.c&&m.c.learned).length;
+  const wl=WORDS.filter(learned_=>(WS[learned_.t]||0)>=3).length;
+  let h=`<div class="tiles">${tile(started.length+' / '+ms.length,'Songs started')}${tile(learned,'Songs learned 🏆')}${tile(set.size,'Days practised',set.size?'since '+fmtDay([...set].sort()[0]):'')}${tile(streakOf(set)+' day'+(streakOf(set)===1?'':'s'),'Current streak')}${tile(wk+' / 7','Days this week')}${tile(avg+'%','Average song progress','songs you\'ve started')}${tile(cleanAll==null?'—':cleanAll+'%','Bars clean first time','all songs')}${tile(runs,'Full run-throughs')}${tile(tot?fmtDur(tot):'—','Practice time','tracked from 20 Nov')}${tile(weakAll,'Weak bars to fix')}${tile(wl+' / '+WORDS.length,'Music words learned')}${tile(RS.best,'Best “Count it” streak')}</div>`;
+  h+=`<div class="dsec"><h3>Practice calendar <span class="hint">(last 12 weeks · darker = more songs that day)</span></h3>${calSvg(k=>(daySongs[k]||[]).length,(k,v)=>v?daySongs[k].join(', '):'no practice')}<div class="dtip"></div></div>`;
+  h+=`<div class="dsec"><h3>All songs <span class="hint">(tap a song for its details)</span></h3><div class="srow hdr"><span>Song</span><span>Progress</span><span class="num">Days</span><span class="num opt">Last played</span><span class="num opt">Best run</span><span class="num">Weak bars</span></div>`+
+    ms.map(m=>`<div class="srow" data-id="${esc(m.id)}"><span><b>${esc(m.title)}</b><br><span class="stage">${esc(m.stage)}</span></span>${jbar(m.pct)}<span class="num">${m.days.length}</span><span class="num opt">${fmtDay(m.last)}</span><span class="num opt">${m.best==null?'—':m.best+'%'}</span><span class="num">${m.weak.length?'⚠ '+m.weak.length:m.days.length?'✓ 0':'—'}</span></div>`).join('')+'</div>';
+  h+=`<p class="hint">Days, practice time and note accuracy are fully tracked from 20 Nov 2026; earlier days come from your saved run-throughs and coach progress. Progress is saved on this device only — use Settings › My progress › Export to move it.</p>`;
+  $('dashBody').innerHTML=h;
+}
+function renderSongDash(id){
+  const m=songMetrics(id);$('dashBack').style.display='';$('dashTitle').textContent='📊 '+m.title;
+  const r=m.r||{},dset=new Set(m.days);
+  let h=`<div class="dsec" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><span class="stage" style="font-size:14px">${esc(m.stage)}</span><div style="flex:1;min-width:200px">${jbar(m.pct,'song journey')}</div><button class="primary" data-act="play">▶ Practise this song</button></div>`;
+  h+=`<div class="tiles">${tile(m.days.length,'Days played',m.first?'first: '+fmtDay(m.first):'')}${tile(fmtDay(m.last),'Last played')}${tile(m.ss.length,'Full run-throughs')}${tile(m.best==null?'—':m.best+'%','Best run',m.latest==null?'':'latest '+m.latest+'%')}${tile(m.barClean==null?'—':m.barClean+'%','Bars clean first time',m.barPlays?m.barPlays+' bar plays':'')}${tile(m.acc==null?'—':m.acc+'%','Note accuracy',m.notes+m.wrong?`${m.wrong} wrong of ${m.notes+m.wrong}`:'tracked from 20 Nov')}${tile(m.ms?fmtDur(m.ms):'—','Practice time')}${tile(m.strong.length+' / '+m.bars.length,'Solid bars')}</div>`;
+  h+=`<div class="dsec"><h3>Bars <span class="hint">(based on your last 5 plays of each bar)</span></h3><div class="barmap">${m.bars.map(b=>`<div class="bm ${b.st}" data-tip="${esc(`Bar ${b.i+1}: `+(b.st==='new'?'not played yet':`${b.m.plays} plays, missed in ${b.miss} of the last ${b.m.recent.length}`))}" title="Bar ${b.i+1}">${b.i+1}<span>${{strong:'✓',shaky:'~',weak:'⚠',new:'·'}[b.st]}</span></div>`).join('')}</div>
+    <div class="legend"><span><i style="background:#0ca30c"></i>✓ Solid (${m.strong.length})</span><span><i style="background:#fab219"></i>~ Getting there (${m.shaky.length})</span><span><i style="background:#d03b3b"></i>⚠ Weak — missed 2+ of last 5 (${m.weak.length})</span><span><i style="background:#f1efe9;border:1px dashed #c3c2b7"></i>· Not played yet (${m.fresh.length})</span></div><div class="dtip"></div>
+    <div class="cols2" style="margin-top:10px"><div class="blist"><b>Needs work:</b> ${m.weak.length?m.weak.map(b=>`<button data-act="bar" data-m="${b.i}">⚠ Bar ${b.i+1}</button>`).join('')+(m.weak.length>1?` <button class="primary" data-act="weak">Drill all weak bars</button>`:''):m.shaky.length?'no weak bars — bars '+m.shaky.map(b=>b.i+1).join(', ')+' are nearly there':'nothing yet 👍'}</div>
+    <div class="blist"><b>Going well:</b> ${m.strong.length?(m.strong.length===m.bars.length?'every bar ✓':'bars '+m.strong.map(b=>b.i+1).join(', ')):'play the song a couple of times to see your solid bars'}</div></div></div>`;
+  const hist=((m.c&&m.c.hist)||[]).filter(x=>dset.has(dayKey(new Date(x.d))));
+  h+=`<div class="cols2"><div class="dsec"><h3>Song journey by day</h3>${lineSvg(hist.map(x=>({x:fmtDay(dayKey(new Date(x.d))),y:x.p})),'day of coach progress')}<div class="dtip"></div></div>
+    <div class="dsec"><h3>Run-through scores <span class="hint">(% of notes right first time)</span></h3>${lineSvg(m.ss.slice(-12).map(x=>({x:fmtDay(dayKey(new Date(x.ts))),y:x.pct})),'full run-through')}<div class="dtip"></div></div></div>`;
+  h+=`<div class="dsec"><h3>Days played <span class="hint">(last 12 weeks · darker = more notes played)</span></h3>${calSvg(k=>dset.has(k)?1+((r.days&&r.days[k])?r.days[k].n+r.days[k].w:0):0,(k,v)=>{if(!v)return 'not played';const d=r.days&&r.days[k];return d&&d.n+d.w?`${d.n+d.w} notes, ${d.w} wrong${d.ms?', '+fmtDur(d.ms):''}${d.runs?', '+d.runs+' run'+(d.runs>1?'s':''):''}`:'played';})}
+    <div class="dtip"></div><div class="calnote">${m.days.length?'Played on: '+m.days.slice(-14).map(fmtDay).join(' · ')+(m.days.length>14?' …':''):'Not played yet.'}</div></div>`;
+  $('dashBody').innerHTML=h;
+}
+function dashLoad(id){
+  if(id.startsWith('demo:')&&DEMOS[id.slice(5)]){$('demo').value=id.slice(5);loadXml(DEMOS[id.slice(5)](),id);}
+  else if(DB.songs[id]&&DB.songs[id].xml)loadXml(DB.songs[id].xml,id);
+}
+$('dashBody').onclick=e=>{
+  showTip(e);
+  const row=e.target.closest('.srow[data-id]');if(row){openDash(row.dataset.id);return;}
+  const b=e.target.closest('button[data-act]');if(!b||!dashSong)return;const id=dashSong;
+  if(S.songId!==id)dashLoad(id);closeDrawer();
+  if(b.dataset.act==='bar'||b.dataset.act==='weak'){setMode('free');practiseTrouble(b.dataset.act==='bar'?[+b.dataset.m]:troubleList());}
+};
+function showTip(e){const t=e.target.closest('[data-tip]'),sec=t&&t.closest('.dsec'),o=sec&&sec.querySelector('.dtip');if(o)o.textContent=t.dataset.tip;}
+$('dashBody').addEventListener('mouseover',showTip);
+$('btnDash').onclick=()=>openDash(null);$('dashBack').onclick=()=>{dashSong=null;renderDash();};
+
 // ---------- loading ----------
 function loadXml(text,id){
   try{
     const sc=parseScore(text);id=id||('xml:'+hashStr(text));S={score:sc,songId:id};
     const rec=DB.songs[id]||(DB.songs[id]={title:sc.title,measures:{},sessions:[],updated:Date.now()});
-    rec.title=sc.title;if(!id.startsWith('demo:'))rec.xml=text;DB.last=id;dbSave();
+    rec.title=sc.title;rec.nBars=sc.measures.length;lastPress=0;if(!id.startsWith('demo:'))rec.xml=text;DB.last=id;dbSave();
     $('mFrom').value=1;$('mTo').value=sc.measures.length;$('mTo').max=sc.measures.length;
     renderScore();buildKeyboard();applyKb();applyNames();buildSteps();refreshSavedSelect();updateProgressUI();if(isCoach())coStart();
     say(`Loaded “${sc.title}” — ${sc.measures.length} measures. Press the highlighted note.`);
