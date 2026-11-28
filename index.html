@@ -170,7 +170,7 @@ header{background:#292524}header select,header button{background:#44403c;color:#
   </details>
   <details>
     <summary>Songs</summary>
-    <label>Book songs <select id="demo"><option value="lightly">Lightly Row (Alfred's p.23)</option><option value="rhody">Aunt Rhody (Alfred's p.23)</option><option value="jingle">Jingle Bells (Alfred's p.30)</option><option value="harm45">Harmonic 4ths &amp; 5ths (Alfred's p.32)</option><option value="dueling">Dueling Harmonics (Alfred's p.32)</option><option value="merrily">Merrily We Roll Along (Alfred's p.35)</option><option value="largo">Largo – Going Home (Alfred's p.35)</option><option value="maryann">Mary Ann (Alfred's p.37)</option><option value="rockets">Rockets (Alfred's p.40)</option><option value="warmupcgf">Warm-Up: C, G7 &amp; F Chords (Alfred's p.45)</option><option value="saints">When the Saints Go Marching In (Alfred's p.45)</option><option value="ode">Ode to Joy (hands together)</option><option value="chords">Chords I–IV–V–I</option></select></label>
+    <label>Book songs <select id="demo"><option value="ode13">Ode to Joy (Alfred's p.13)</option><option value="aura">Aura Lee (p.17)</option><option value="hatdance">Mexican Hat Dance (p.21)</option><option value="lightly">Lightly Row (Alfred's p.23)</option><option value="rhody">Aunt Rhody (Alfred's p.23)</option><option value="claire">Au Claire de la Lune (p.24)</option><option value="tisket">Tisket, a Tasket (p.24)</option><option value="wenceslas">Good King Wenceslas (p.28)</option><option value="jingle">Jingle Bells (Alfred's p.30)</option><option value="harm45">Harmonic 4ths &amp; 5ths (Alfred's p.32)</option><option value="dueling">Dueling Harmonics (Alfred's p.32)</option><option value="brotherjohn">Brother John (p.33)</option><option value="merrily">Merrily We Roll Along (Alfred's p.35)</option><option value="largo">Largo – Going Home (Alfred's p.35)</option><option value="maryann">Mary Ann (Alfred's p.37)</option><option value="rockets">Rockets (Alfred's p.40)</option><option value="warmupcgf">Warm-Up: C, G7 &amp; F Chords (Alfred's p.45)</option><option value="saints">When the Saints Go Marching In (Alfred's p.45)</option><option value="saintsboth">When the Saints – RH then LH melody (pp.45 &amp; 47)</option><option value="burden">I'm Gonna Lay My Burden Down (p.48)</option><option value="lovesomebody">Love Somebody! (p.51)</option><option value="cuckoo">The Cuckoo (p.59)</option><option value="lizajane">Liza Jane (p.62)</option><option value="browneyes">Beautiful Brown Eyes (p.65)</option><option value="goodmorning">Good Morning to You! (p.74)</option><option value="birthday">Happy Birthday to You! (p.75)</option><option value="shoofly">Shoo, Fly, Shoo! (p.76)</option><option value="skiplou">Skip to My Lou! (p.76)</option><option value="needprayer">Standing in the Need of Prayer (p.77)</option><option value="alouette">Alouette (p.82)</option><option value="lavender">Lavender's Blue (p.84)</option><option value="kumbaya">Kum-ba-yah! (p.85)</option><option value="londonbridge">London Bridge (p.88)</option><option value="michael">Michael, Row the Boat Ashore (p.88)</option><option value="blowman">Blow the Man Down! (p.89)</option><option value="lullaby">Lullaby – Brahms (p.95)</option><option value="joyworld">Joy to the World (p.103)</option><option value="cockles">Cockles and Mussels (p.105)</option><option value="oldsmoky">On Top of Old Smoky (p.110)</option><option value="cancan">The Can-Can (p.113)</option><option value="marines">The Marines' Hymn (p.115)</option><option value="brownjug">Little Brown Jug (p.119)</option><option value="auldlang">Auld Lang Syne (p.123)</option><option value="solemio">O Sole Mio! (p.124)</option><option value="jericho">Jericho (p.127)</option><option value="greensleeves">Greensleeves (p.130)</option><option value="godownmoses">Go Down, Moses (p.133)</option><option value="scarborough">Scarborough Fair (p.135)</option><option value="raisins">Raisins and Almonds (p.136)</option><option value="wholeworld">He's Got the Whole World in His Hands (p.138)</option><option value="entertainer">The Entertainer (p.140)</option><option value="amazinggrace">Amazing Grace (p.142)</option><option value="ode">Ode to Joy (hands together)</option><option value="chords">Chords I–IV–V–I</option></select></label>
     <label>Your songs <select id="saved"><option value="">Your saved songs…</option></select></label>
     <label>Load a MusicXML file <input type="file" id="file" accept=".musicxml,.xml,.mxl"></label>
     <details><summary>Paste MusicXML text</summary>
@@ -313,7 +313,7 @@ async function unzipMxl(buf){
 
 // ---------- demo scores ----------
 function buildXML(title,fifths,measures,beats=4){
-  const DUR={w:8,h:4,q:2,e:1},TYPE={w:'whole',h:'half',q:'quarter',e:'eighth'};
+  const DUR={w:24,h:12,q:6,e:3,t:2},TYPE={w:'whole',h:'half',q:'quarter',e:'eighth',t:'eighth'}; // t = eighth-note triplet
   const toXml=(str,staff)=>{let total=0,out='';
     for(const tok of str.trim().split(/\s+/)){
       const [ps0,d0]=tok.split(':');const tS=ps0[0]==='_',tB=d0.endsWith('~'),ps=ps0.replace(/^_/,''),d=d0.replace('~','');const dot=d.endsWith('.');const base=d.replace('.','');
@@ -322,18 +322,22 @@ function buildXML(title,fifths,measures,beats=4){
         out+='<note>'+(i?'<chord/>':'');
         if(p==='r')out+='<rest/>';else{const m=/^([A-G])([#b]?)(\d)$/.exec(p);
           out+=`<pitch><step>${m[1]}</step>${m[2]?`<alter>${m[2]==='#'?1:-1}</alter>`:''}<octave>${m[3]}</octave></pitch>`;}
-        out+=`<duration>${dur}</duration>${tS?'<tie type="stop"/>':''}${tB?'<tie type="start"/>':''}<type>${TYPE[base]}</type>${dot?'<dot/>':''}<staff>${staff}</staff></note>`;
+        out+=`<duration>${dur}</duration>${tS?'<tie type="stop"/>':''}${tB?'<tie type="start"/>':''}<type>${TYPE[base]}</type>${dot?'<dot/>':''}${base==='t'?'<time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>':''}<staff>${staff}</staff></note>`;
       });}
     return [out,total];};
   let x=`<?xml version="1.0"?><score-partwise><work><work-title>${title}</work-title></work><part-list><score-part id="P1"/></part-list><part id="P1">`;
+  let curB=beats; // a measure may set b (beats) to change the time signature
   measures.forEach((m,i)=>{
     const [r,tot]=toXml(m.rh,1),[l]=toXml(m.lh,2);
     x+=`<measure number="${i+1}">`;
-    if(i===0)x+=`<attributes><divisions>2</divisions><key><fifths>${fifths}</fifths></key><time><beats>${beats}</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign></clef><clef number="2"><sign>F</sign></clef></attributes>`;
+    if(i===0&&m.b)curB=m.b;
+    if(i>0&&m.b&&m.b!==curB){curB=m.b;x+=`<attributes><time><beats>${curB}</beats><beat-type>4</beat-type></time></attributes>`;}
+    if(i===0)x+=`<attributes><divisions>6</divisions><key><fifths>${fifths}</fifths></key><time><beats>${curB}</beats><beat-type>4</beat-type></time><staves>2</staves><clef number="1"><sign>G</sign></clef><clef number="2"><sign>F</sign></clef></attributes>`;
     x+=r+`<backup><duration>${tot}</duration></backup>`+l+'</measure>';
   });
-  return x+'</part></score-partwise>';
+  return x.replace(/&(?!amp;)/g,'&amp;')+'</part></score-partwise>';
 }
+const shiftOct=(s,o)=>s.replace(/([A-G][#b]?)(\d)/g,(m,p,n)=>p+(+n+o)),up8=s=>shiftOct(s,1),dn8=s=>shiftOct(s,-1);
 const DEMOS={
   // p.23 pieces end with repeat dots; the app has no repeat support, so the repeat is written out (played twice)
   lightly:()=>{const a=[
@@ -408,6 +412,374 @@ const DEMOS={
       {rh:'r:q C4:q E4:q F4:q',lh:'r:w'},...body,
       {rh:'_C4:q C4:q E4:q F4:q',lh:`${C}:q r:q r:h`},...body,
       {rh:'_C4:q r:q r:h',lh:`${C}:q r:q r:h`}]);},
+// p13
+ode13:()=>buildXML('Ode to Joy (RH)',0,[
+  {rh:'E4:q E4:q F4:q G4:q',lh:'r:w'},{rh:'G4:q F4:q E4:q D4:q',lh:'r:w'},
+  {rh:'C4:q C4:q D4:q E4:q',lh:'r:w'},{rh:'E4:q D4:q D4:h',lh:'r:w'},
+  {rh:'E4:q E4:q F4:q G4:q',lh:'r:w'},{rh:'G4:q F4:q E4:q D4:q',lh:'r:w'},
+  {rh:'C4:q C4:q D4:q E4:q',lh:'r:w'},{rh:'D4:q C4:q C4:h',lh:'r:w'}]),
+// p17
+aura:()=>{const a=[{rh:'r:w',lh:'C3:q F3:q E3:q F3:q'},{rh:'r:w',lh:'G3:q D3:q G3:h'},
+  {rh:'r:w',lh:'F3:q E3:q D3:q E3:q'},{rh:'r:w',lh:'F3:w'}];return buildXML('Aura Lee',0,[...a,...a]);},
+// p21 (repeat written out)
+hatdance:()=>{const a=[{rh:'r:w',lh:'G3:h E3:q r:q'},{rh:'r:w',lh:'G3:h E3:q r:q'},
+  {rh:'r:w',lh:'D3:q E3:q F3:q D3:q'},{rh:'r:w',lh:'E3:h C3:q r:q'},
+  {rh:'G4:h E4:q r:q',lh:'r:w'},{rh:'G4:h E4:q r:q',lh:'r:w'},
+  {rh:'D4:q E4:q F4:q D4:q',lh:'r:w'},{rh:'C4:w',lh:'r:w'}];return buildXML('Mexican Hat Dance',0,[...a,...a]);},
+// p24
+claire:()=>{const a=[{rh:'C4:q C4:q C4:q D4:q',lh:'r:w'},{rh:'E4:h D4:h',lh:'r:w'},
+  {rh:'C4:q E4:q D4:q D4:q',lh:'r:w'},{rh:'C4:w',lh:'r:w'}];return buildXML('Au Claire de la Lune',0,[...a,...a]);},
+tisket:()=>buildXML('Tisket, a Tasket',0,[
+  {rh:'r:w',lh:'G3:h E3:q F3:q'},{rh:'r:w',lh:'G3:h E3:q F3:q'},
+  {rh:'r:w',lh:'G3:q G3:q E3:q F3:q'},{rh:'r:w',lh:'G3:h E3:h'},
+  {rh:'r:w',lh:'F3:q F3:q F3:q D3:q'},{rh:'r:w',lh:'F3:q F3:q F3:q D3:q'},
+  {rh:'r:w',lh:'G3:q F3:q E3:q D3:q'},{rh:'r:w',lh:'C3:w'}]),
+// p28
+wenceslas:()=>buildXML('Good King Wenceslas',0,[
+  {rh:'F4:q F4:q F4:q G4:q',lh:'r:w'},{rh:'F4:q F4:q C4:h',lh:'r:w'},
+  {rh:'D4:q C4:q D4:q E4:q',lh:'r:w'},{rh:'F4:h F4:h',lh:'r:w'},
+  {rh:'r:w',lh:'F3:q F3:q F3:q G3:q'},{rh:'r:w',lh:'F3:q F3:q C3:h'},
+  {rh:'r:w',lh:'D3:q C3:q D3:q E3:q'},{rh:'r:w',lh:'F3:h F3:h'}]),
+// p33
+brotherjohn:()=>{const C='C3+E3+G3';return buildXML('Brother John',0,[
+  {rh:'C4:q D4:q E4:q C4:q',lh:`${C}:w`},{rh:'C4:q D4:q E4:q C4:q',lh:`${C}:w`},
+  {rh:'E4:q F4:q G4:h',lh:`${C}:w`},{rh:'E4:q F4:q G4:h',lh:`${C}:w`},
+  {rh:'G4:q F4:q E4:q C4:q',lh:`${C}:w`},{rh:'G4:q F4:q E4:q C4:q',lh:`${C}:w`},
+  {rh:'C4:q r:q C4:h',lh:'r:q G3:q r:h'},{rh:'C4:q r:q C4:h',lh:'r:q G3:q r:h'}]);},
+// p48 LH only; pickup + repeat written out
+burden:()=>{const C='C3+E3+G3',F='C3+F3+A3',G7='B2+F3+G3';
+  const body=[{rh:'r:w',lh:`${C}:q ${C}:q ${F}:q ${F}:q`},{rh:'r:w',lh:`${C}:q C3:q E3:q F3:q`},
+    {rh:'r:w',lh:`${C}:q ${C}:q ${F}:q ${F}:q`},{rh:'r:w',lh:`${C}:q E3:q F3:q E3:q`},
+    {rh:'r:w',lh:`${G7}:w~`},{rh:'r:w',lh:`_${G7}:q F3:q E3:q D3:q`},{rh:'r:w',lh:`C3:q ${C}:q ${F}:q ${F}:q`}];
+  return buildXML("I'm Gonna Lay My Burden Down",0,[{rh:'r:w',lh:'r:q C3:q E3:q F3:q'},...body,
+    {rh:'r:w',lh:`${C}:q C3:q E3:q F3:q`},...body,{rh:'r:w',lh:`${C}:q r:q r:h`}]);},
+// p51 G position; repeat written out
+lovesomebody:()=>{const a=[{rh:'G4:q B4:q D5:q D5:q',lh:'r:w'},{rh:'A4:q B4:q C5:h',lh:'C4+D4:q B3+D4:q A3+D4:h'},
+  {rh:'G4:q B4:q D5:q D5:q',lh:'r:w'},{rh:'C5:q B4:q A4:h',lh:'A3+D4:q B3+D4:q C4+D4:h'},
+  {rh:'G4:q B4:q D5:q D5:q',lh:'r:w'},{rh:'A4:q B4:q C5:h',lh:'C4+D4:q B3+D4:q A3+D4:h'},
+  {rh:'B4:q B4:q A4:q A4:q',lh:'r:w'},{rh:'G4:q G4:q G4:h',lh:'B3+D4:q B3+D4:q B3+D4:h'}];return buildXML('Love Somebody!',0,[...a,...a]);},
+// p59 3/4; first line repeats
+cuckoo:()=>{const G='G3+B3+D4',D7='F#3+C4+D4';const a=[{rh:'D5:h B4:q',lh:`${G}:h.`},{rh:'D5:h B4:q',lh:`${G}:h.`},
+  {rh:'A4:q G4:q A4:q',lh:`${D7}:h.`},{rh:'G4:h.',lh:`${G}:h.`}];
+  return buildXML('The Cuckoo',0,[...a,...a,
+  {rh:'A4:q A4:q B4:q',lh:`${D7}:h.~`},{rh:'C5:h A4:q',lh:`_${D7}:h.`},
+  {rh:'B4:q B4:q C5:q',lh:`${G}:h.~`},{rh:'D5:h B4:q',lh:`_${G}:h.`},
+  {rh:'D5:h B4:q',lh:`${G}:h.`},{rh:'D5:h B4:q',lh:`${G}:h.`},
+  {rh:'A4:q G4:q A4:q',lh:`${D7}:h.`},{rh:'G4:h.',lh:`${G}:h.`}],3);},
+// p62
+lizajane:()=>{const G='G3+B3+D4',D7='F#3+C4+D4';const l=[{rh:'r:w',lh:'B3:q G3:q A3:q G3:q'},{rh:'r:w',lh:'B3:q D4:q D4:h'},
+  {rh:'B4:q B4:h A4:q',lh:`${G}:q ${G}:h ${D7}:q`},{rh:'G4:w',lh:`${G}:w`}];return buildXML('Liza Jane',0,[...l,...l,...l,...l]);},
+// p65 3/4, broken chords
+browneyes:()=>{const G='G3+B3+D4',D7='F#3+C4+D4',CE='C4+E4',CD='C4+D4',BD='B3+D4';return buildXML('Beautiful Brown Eyes',0,[
+  {rh:'B4:q B4:q B4:q',lh:`${G}:h.~`},{rh:'G4:q A4:q B4:q',lh:`_${G}:h.`},
+  {rh:'C5:q C5:h~',lh:`G3:q ${CE}:q ${CE}:q`},{rh:'_C5:h.',lh:`G3:q ${CE}:q ${CE}:q`},
+  {rh:'B4:q B4:q B4:q',lh:`${G}:h.~`},{rh:'G4:q A4:q B4:q',lh:`_${G}:h.`},
+  {rh:'A4:h.',lh:`F#3:q ${CD}:q ${CD}:q`},{rh:'D5:h.',lh:`F#3:q ${CD}:q ${CD}:q`},
+  {rh:'B4:q B4:q B4:q',lh:`${G}:h.~`},{rh:'G4:q A4:q B4:q',lh:`_${G}:h.`},
+  {rh:'C5:q C5:h~',lh:`G3:q ${CE}:q ${CE}:q`},{rh:'_C5:h.',lh:`G3:q ${CE}:q ${CE}:q`},
+  {rh:'D5:q A4:q B4:q',lh:`${D7}:h.~`},{rh:'C5:q B4:q A4:q',lh:`_${D7}:h.`},
+  {rh:'G4:h.~',lh:`G3:q ${BD}:q ${BD}:q`},{rh:'_G4:h.',lh:'G3:h.'}],3);},
+// p74 Middle C position, 3/4, 1-beat pickup
+goodmorning:()=>buildXML('Good Morning to You!',0,[
+  {rh:'r:h.',lh:'r:h G3:q'},{rh:'r:h.',lh:'A3:q G3:q C4:q'},
+  {rh:'r:q F4+G4:q r:q',lh:'B3:h G3:q'},{rh:'r:q r:q D4:q',lh:'A3:q G3:q r:q'},
+  {rh:'r:q E4+G4:q r:q',lh:'C4:h G3:q'},{rh:'G4:q E4:q C4:q',lh:'r:h.'},
+  {rh:'r:q r:q F4:q',lh:'B3:q A3:q A3:q'},{rh:'E4:q C4:q D4:q',lh:'G3:h B3:q'},
+  {rh:'r:q E4+G4:q r:q',lh:'C4:h r:q'}],3),
+// p75
+birthday:()=>buildXML('Happy Birthday to You!',0,[
+  {rh:'r:h.',lh:'r:h G3:e G3:e'},{rh:'r:h.',lh:'A3:q G3:q C4:q'},
+  {rh:'r:q F4+G4:q r:q',lh:'B3:h G3:e G3:e'},{rh:'r:q r:q D4:q',lh:'A3:q G3:q r:q'},
+  {rh:'r:q E4+G4:q r:q',lh:'C4:h G3:e G3:e'},{rh:'G4:q E4:q C4:q',lh:'r:h.'},
+  {rh:'r:q r:q F4:e F4:e',lh:'B3:q A3:q A3:q'},{rh:'E4:q C4:q D4:q',lh:'G3:h B3:q'},
+  {rh:'r:q E4+G4:q r:q',lh:'C4:h r:q'}],3),
+// p76 RH only
+shoofly:()=>buildXML('Shoo, Fly, Shoo!',0,[
+  {rh:'E4:q E4:q C4:q C4:q',lh:'r:w'},{rh:'E4:q E4:q G4:h',lh:'r:w'},
+  {rh:'D4:q D4:q B3:q B3:q',lh:'r:w'},{rh:'D4:q D4:q F4:h',lh:'r:w'},
+  {rh:'E4:q E4:q C4:q C4:q',lh:'r:w'},{rh:'E4:q E4:q G4:h',lh:'r:w'},
+  {rh:'D4:q F4:q E4:q D4:q',lh:'r:w'},{rh:'C4:h C4:h',lh:'r:w'}]),
+skiplou:()=>buildXML('Skip to My Lou!',0,[
+  {rh:'E4:q E4:q C4:q C4:q',lh:'r:w'},{rh:'E4:q E4:e E4:e G4:h',lh:'r:w'},
+  {rh:'D4:q D4:q B3:q B3:q',lh:'r:w'},{rh:'D4:q D4:e D4:e F4:h',lh:'r:w'},
+  {rh:'E4:q E4:q C4:q C4:q',lh:'r:w'},{rh:'E4:q E4:e E4:e G4:h',lh:'r:w'},
+  {rh:'D4:q E4:e F4:e E4:q D4:q',lh:'r:w'},{rh:'C4:h C4:h',lh:'r:w'}]),
+// p77 D.C. al Fine written out
+needprayer:()=>{const C='C3+E3+G3',G7='B2+F3+G3',F='C3+F3+A3';
+  const A=[{rh:'E4:h. E4:q',lh:`r:q ${C}:q ${C}:q r:q`},{rh:'E4:q D4:q C4:h',lh:`${C}:q ${G7}:q ${C}:h`},
+    {rh:'C4:e C4:e C4:e C4:e D4:q D4:q',lh:`${C}:h ${G7}:h`},{rh:'E4:h. E4:q',lh:`${C}:h. r:q`},
+    {rh:'E4:h. E4:q',lh:`r:q ${C}:q ${C}:q r:q`},{rh:'E4:q D4:q C4:h',lh:`${C}:q ${G7}:q ${C}:h`},
+    {rh:'C4:e C4:e C4:e C4:e E4:q D4:q',lh:`${C}:h ${G7}:h`}];
+  const B1=[{rh:'E4:e D#4:e E4:e D4:e E4:e D4:e E4:e D4:e',lh:`${C}:q r:q ${C}:q r:q`},{rh:'E4:q D4:q C4:h',lh:`${C}:q ${G7}:q ${C}:h`},
+    {rh:'C4:e C4:e C4:e C4:e D4:q D4:q',lh:`${C}:h ${G7}:h`}];
+  const B2=[{rh:'E4:e D#4:e E4:e D4:e E4:e D4:e E4:e D4:e',lh:`${C}:q r:q ${C}:q r:q`},{rh:'E4:q D4:q C4:h',lh:`${C}:q ${G7}:q ${C}:h`},
+    {rh:'C4:e C4:e C4:e C4:e E4:q D4:q',lh:`${C}:h ${G7}:h`}];
+  return buildXML('Standing in the Need of Prayer',0,[{rh:'r:h. E4:q',lh:'r:w'},...A,
+    {rh:'C4:h. E4:e D#4:e',lh:`${C}:q ${F}:q ${C}:q r:q`},...B1,{rh:'E4:h. E4:e D#4:e',lh:`${C}:h. r:q`},...B2,
+    {rh:'C4:h. E4:q',lh:`${C}:q ${F}:q ${C}:q r:q`},...A,{rh:'C4:h. r:q',lh:`${C}:q ${F}:q ${C}:q r:q`}]);},
+// p82
+alouette:()=>{const C='C3+E3+G3',G7='B2+F3+G3';return buildXML('Alouette',0,[
+  {rh:'C4:q. D4:e E4:q E4:q',lh:`${C}:w`},{rh:'D4:e C4:e D4:e E4:e C4:q r:q',lh:`${G7}:h ${C}:q G3:q`},
+  {rh:'C4:q. D4:e E4:q E4:q',lh:`${C}:w`},{rh:'D4:e C4:e D4:e E4:e C4:h',lh:`${G7}:h ${C}:h`},
+  {rh:'r:w',lh:'C3:e D3:e E3:e F3:e G3:e G3:e G3:q'},{rh:'G4:e F4:e E4:e D4:e C4:e C4:e C4:q',lh:'r:w'},
+  {rh:'G4:e G4:e G4:q r:h',lh:'r:h G3:e G3:e G3:q'},{rh:'G4:q F4:q E4:q D4:q',lh:'G3:q F3:q E3:q D3:q'},
+  {rh:'C4:q. D4:e E4:q E4:q',lh:`${C}:w`},{rh:'D4:e C4:e D4:e E4:e C4:q r:q',lh:`${G7}:h ${C}:q G3:q`},
+  {rh:'C4:q. D4:e E4:q G4:q',lh:`${C}:w`},{rh:'D4:e C4:e D4:e E4:e C4:h',lh:`${G7}:h ${C}:h`}]);},
+// p84 3/4; first 8 bars repeat
+lavender:()=>{const C='C3+E3+G3',F='C3+F3+A3';const a=[
+  {rh:'C4:q G4:q G4:q',lh:`${C}:q r:q r:q`},{rh:'C4+G4:q F4:e E4:e D4:e C4:e',lh:`${C}:q r:q r:q`},
+  {rh:'C4:q A4:q A4:q',lh:`${F}:q r:q r:q`},{rh:'C4+A4:h.',lh:'C3:q F3+A3:q F3+A3:q'},
+  {rh:'C4:q G4:q G4:q',lh:`${C}:q r:q r:q`},{rh:'C4+G4:q F4:e E4:e D4:e C4:e',lh:`${C}:q r:q r:q`},
+  {rh:'F4:q E4:q D4:q',lh:'C3+A3:q C3+G3:q C3+F3:q'},{rh:'C4:h.',lh:'C3+E3:q G3:e F3:e E3:e D3:e'}];
+  return buildXML("Lavender's Blue",0,[...a,...a,
+  {rh:'r:q G4:e F4:e E4:e D4:e',lh:'C3:q r:q r:q'},{rh:'C4:q r:q r:q',lh:'r:q G3:e F3:e E3:e D3:e'},
+  {rh:'r:q C4+E4:q C4+E4:q',lh:'C3:q C3+G3:q C3+G3:q'},{rh:'C4+E4:h.',lh:'C3+G3:h.'}],3);},
+// p85 changing 2/4 & 4/4; 2nd time both hands 8va
+kumbaya:()=>{const a=[
+  {b:2,rh:'C4:q E4:q',lh:'r:h'},{b:4,rh:'C4+G4:q. C4+G4:e C4+G4:h',lh:'C3+E3:q. C3+E3:e C3+E3:h'},
+  {b:2,rh:'C4+A4:q C4+A4:q',lh:'C3+F3:q C3+F3:q'},{b:4,rh:'C4+G4:w',lh:'C3+E3:w'},
+  {b:2,rh:'C4:q E4:q',lh:'r:h'},{b:4,rh:'C4+G4:q. C4+G4:e C4+G4:h',lh:'C3+E3:q. C3+E3:e C3+E3:h'},
+  {b:2,rh:'F4:q E4:q',lh:'r:h'},{b:4,rh:'D4:w',lh:'F3+G3:w'},
+  {b:2,rh:'C4:q E4:q',lh:'r:h'},{b:4,rh:'C4+G4:q. C4+G4:e C4+G4:h',lh:'C3+E3:q. C3+E3:e C3+E3:h'},
+  {b:2,rh:'C4+A4:q C4+A4:q',lh:'C3+F3:q C3+F3:q'},{b:4,rh:'C4+G4:w',lh:'C3+E3:w'},
+  {b:2,rh:'F4:h',lh:'C3+A3:h'},{b:4,rh:'E4:q C4:h.',lh:'C3+G3:w'},
+  {b:2,rh:'D4:q D4:q',lh:'F3+G3:q F3+G3:q'},{b:4,rh:'C4:w',lh:'E3+G3:w'}];
+  return buildXML('Kum-ba-yah!',0,[...a,...a.map(m=>({b:m.b,rh:up8(m.rh),lh:up8(m.lh)}))],2);},
+// p88; 2nd time RH 8va
+londonbridge:()=>{const C='C3+E3+G3',G7='B2+F3+G3';const a=[
+  {rh:'G4:q. A4:e G4:q F4:q',lh:`${C}:w~`},{rh:'E4:q F4:q G4:h',lh:`_${C}:w`},
+  {rh:'D4:q E4:q F4:h',lh:`${G7}:w`},{rh:'E4:q F4:q G4:h',lh:`${C}:w`},
+  {rh:'G4:q. A4:e G4:q F4:q',lh:`${C}:w~`},{rh:'E4:q F4:q G4:h',lh:`_${C}:w`},
+  {rh:'D4:h G4:h',lh:`${G7}:w`},{rh:'E4:q C4:h.',lh:`${C}:w`}];
+  return buildXML('London Bridge',0,[...a,...a.map(m=>({rh:up8(m.rh),lh:m.lh}))]);},
+// p88; 2-beat pickup, repeat written out
+michael:()=>{const body=[
+  {rh:'G4:q. E4:e G4:q A4:q',lh:'r:w'},{rh:'G4:h E4:q G4:q',lh:'r:w'},
+  {rh:'A4:w',lh:'C3+F3:w'},{rh:'G4:h r:h',lh:'C3+E3:h E3:q G3:q'},
+  {rh:'r:w',lh:'G3:q. E3:e F3:q E3:q'},{rh:'r:w',lh:'D3:h C3:q D3:q'},
+  {rh:'G4:h F4:h',lh:'E3:h D3:h'}];
+  return buildXML('Michael, Row the Boat Ashore',0,[{rh:'r:h C4:q E4:q',lh:'r:w'},...body,
+    {rh:'E4:h C4:q E4:q',lh:'C3:h r:h'},...body,{rh:'E4:h r:h',lh:'C3:h r:h'}]);},
+// p89 3/4, 1-beat pickup
+blowman:()=>{const c='C3:q E3+G3:q E3+G3:q',g='B2:q F3+G3:q F3+G3:q';return buildXML('Blow the Man Down!',0,[
+  {rh:'r:h G4:q',lh:'r:h.'},{rh:'G4:q. A4:e G4:q',lh:c},{rh:'E4:q C4:q E4:q',lh:c},{rh:'G4:q. A4:e G4:q',lh:c},
+  {rh:'E4:h C4:e E4:e',lh:'C3:q E3+G3:q r:q'},{rh:'G4:h.',lh:c},{rh:'A4:h.',lh:c},
+  {rh:'F4:q. E4:e F4:q',lh:g},{rh:'D4:h D4:q',lh:g},{rh:'D4:q D4:q D4:q',lh:g},{rh:'F4:q E4:q D4:q',lh:g},
+  {rh:'F4:q E4:q D4:q',lh:g},{rh:'A4:h.',lh:'B2+F3+G3:h.'},{rh:'G4:q G4:q G4:q',lh:g},{rh:'G4:h F4:q',lh:g},
+  {rh:'E4:q. D4:e E4:q',lh:g},{rh:'C4:h.',lh:'C3+E3+G3:h.'}],3);},
+// p95 Brahms, 3/4, pickup of two eighths
+lullaby:()=>{const c='C3:q E3+G3:q r:q',cc='C3:q E3+G3:q E3+G3:q',f='C3:q F3+A3:q r:q',g='B2:q F3+G3:q r:q',gg='B2:q F3+G3:q F3+G3:q';
+  return buildXML('Lullaby (Brahms)',0,[
+  {rh:'r:h E4:e E4:e',lh:'r:h.'},{rh:'G4:q. E4:e E4:q',lh:c},{rh:'G4:h E4:e G4:e',lh:c},
+  {rh:'C5:q B4:q. A4:e',lh:cc},{rh:'A4:q G4:q D4:e E4:e',lh:'D3:q F3+G3:q r:q'},
+  {rh:'F4:q D4:q D4:e E4:e',lh:g},{rh:'F4:h D4:e F4:e',lh:g},
+  {rh:'B4:e A4:e G4:q B4:q',lh:'D3:q F3+G3:q F3+G3:q'},{rh:'C5:h C4:e C4:e',lh:c},
+  {rh:'C5:h A4:e F4:e',lh:f},{rh:'G4:h E4:e C4:e',lh:c},{rh:'F4:q G4:q A4:q',lh:gg},
+  {rh:'E4:q G4:q C4:e C4:e',lh:c},{rh:'C5:h A4:e F4:e',lh:f},{rh:'G4:h E4:e C4:e',lh:c},
+  {rh:'F4:q E4:q D4:q',lh:gg},{rh:'C4:h r:q',lh:'C3+E3+G3:h r:q'}],3);},
+// p103 Handel
+joyworld:()=>{const C='C3+E3+G3',G7='B2+F3+G3';return buildXML('Joy to the World',0,[
+  {rh:'r:w',lh:'C4:h B3:q. A3:e'},{rh:'r:w',lh:'G3:h. F3:q'},{rh:'r:w',lh:'E3:h D3:h'},
+  {rh:'r:h r:q G4:q',lh:'C3:h. r:q'},{rh:'A4:h. A4:q',lh:'F3:h. F3:q'},{rh:'B4:h. B4:q',lh:'F3+G3:h. F3+G3:q'},
+  {rh:'C5:h. C5:q',lh:'E3+G3:h. r:q'},{rh:'C5:q B4:q A4:q G4:q',lh:'r:w'},
+  {rh:'G4:q. F4:e E4:q r:q',lh:'r:h r:q C4:q'},{rh:'r:w',lh:'C4:q B3:q A3:q G3:q'},
+  {rh:'r:h r:q E4:q',lh:'G3:q. F3:e E3:q r:q'},{rh:'E4:q E4:q E4:q E4:e F4:e',lh:`${C}:h. r:q`},
+  {rh:'G4:h. F4:e E4:e',lh:`${C}:q ${C}:q ${C}:q r:q`},{rh:'D4:q D4:q D4:q D4:e E4:e',lh:`${G7}:h. r:q`},
+  {rh:'F4:h. E4:e D4:e',lh:`${G7}:q ${G7}:q ${G7}:q r:q`},{rh:'C4:q C5:h A4:q',lh:`${C}:h. r:q`},
+  {rh:'G4:q. F4:e E4:q F4:q',lh:`${C}:h. F3:q`},{rh:'E4:h D4:h',lh:`G3:h ${G7}:h`},{rh:'C4:w',lh:`${C}:w`}]);},
+// p105 3/4, LH root-position triads
+cockles:()=>{const C='C3+E3+G3',G='G3+B3+D4';return buildXML('Cockles and Mussels',0,[
+  {rh:'r:h r:q',lh:'r:h G3:q'},
+  {rh:'C4:q. C4:e C4:q',lh:`${C}:h.~`},{rh:'C4:q E4:q C4:q',lh:`_${C}:h r:q`},
+  {rh:'D4:q. D4:e D4:q',lh:`${G}:h.~`},{rh:'D4:q F4:q D4:q',lh:`_${G}:h r:q`},
+  {rh:'E4:q. F4:e G4:q',lh:`${C}:h.~`},{rh:'G4:q F4:q E4:q',lh:`_${C}:h.`},
+  {rh:'E4:q D4:q D4:q',lh:`${G}:h.`},{rh:'D4:h r:q',lh:'G3+B3:h G3:q'},
+  {rh:'C4:q. C4:e C4:q',lh:`${C}:h.~`},{rh:'C4:q E4:q C4:q',lh:`_${C}:h r:q`},
+  {rh:'D4:q. D4:e D4:q',lh:`${G}:h.~`},{rh:'D4:q F4:q E4:e D4:e',lh:`_${G}:h r:q`},
+  {rh:'G4:q E4:q C4:q',lh:`${C}:h.~`},{rh:'G4:q E4:q C4:q',lh:`_${C}:h.`},
+  {rh:'D4:q. C4:e D4:q',lh:'G3+B3:h B3+D4:q'},{rh:'C4:h r:q',lh:`r:q ${C}:q r:q`}],3);},
+// pp110-111 3/4, broken-chord LH
+oldsmoky:()=>{const I='C3:q E3:q G3:q',IV='C3:q F3:q A3:q',V='B2:q F3:q G3:q',R='r:h.';return buildXML('On Top of Old Smoky',0,[
+  {rh:'r:h C4:q',lh:R},{rh:'C4:q E4:q G4:q',lh:R},{rh:'C5:h.',lh:IV},{rh:'A4:h.~',lh:IV},{rh:'_A4:h F4:q',lh:IV},
+  {rh:'F4:q G4:q A4:q',lh:R},{rh:'G4:h.~',lh:I},{rh:'_G4:h.~',lh:I},{rh:'_G4:h C4:q',lh:I},
+  {rh:'C4:q E4:q G4:q',lh:R},{rh:'G4:h.',lh:V},{rh:'D4:h.~',lh:V},{rh:'_D4:h D4:e E4:e',lh:V},
+  {rh:'F4:q E4:q D4:q',lh:R},{rh:'C4:h.~',lh:I},{rh:'_C4:h.~',lh:I},{rh:'_C4:h C4:q',lh:I},
+  {rh:'C4:q E4:q G4:q',lh:R},{rh:'C5:h.',lh:IV},{rh:'A4:h.~',lh:IV},{rh:'_A4:h F4:q',lh:IV},
+  {rh:'F4:q G4:q A4:q',lh:R},{rh:'G4:h.~',lh:I},{rh:'_G4:h.~',lh:I},{rh:'_G4:h C4:q',lh:I},
+  {rh:'C4:q E4:q G4:q',lh:R},{rh:'G4:h.',lh:V},{rh:'D4:h.~',lh:V},{rh:'_D4:h D4:e E4:e',lh:V},
+  {rh:'F4:q E4:q D4:q',lh:R},{rh:'C4:h.~',lh:I},{rh:'_C4:h.',lh:I},{rh:'C4:q E4:q G4:q',lh:'C3:h.~'},
+  {rh:'C5:h r:q',lh:'_C3:h r:q'}],3);},
+// p113 Offenbach, key of G
+cancan:()=>{const g='G3:q B3+D4:q B3+D4:q B3+D4:q',d='F#3:q C4+D4:q C4+D4:q C4+D4:q',G='G3+B3+D4',D7='F#3+C4+D4';
+  const a=[{rh:'G4:w',lh:g},{rh:'A4:q C5:q B4:q A4:q',lh:d},{rh:'D5:h D5:h',lh:g},{rh:'D5:q E5:q B4:q C5:q',lh:g}];
+  return buildXML('The Can-Can',1,[...a,{rh:'A4:h A4:h',lh:d},{rh:'A4:q C5:q B4:q A4:q',lh:d},
+  {rh:'G4:q G5:q F#5:q E5:q',lh:`${G}:q r:q r:h`},{rh:'D5:q C5:q B4:q A4:q',lh:'r:w'},...a,
+  {rh:'A4:h A4:h',lh:d},{rh:'A4:q C5:q B4:q A4:q',lh:d},
+  {rh:'G4:q D5:q A4:q B4:q',lh:`${G}:q r:q ${D7}:q r:q`},{rh:'G4:q r:q G4:q r:q',lh:`${G}:q r:q ${G}:q r:q`}]);},
+// p115 key of G; repeat + D.C. al Fine written out
+marines:()=>{const G='G2+B2+D3',C='G2+C3+E3',D7='F#2+C3+D3',G3q=`${G}:q ${G}:q ${G}:q r:q`;
+  const A=[{rh:'D5:q D5:q D5:q D5:q',lh:`${G}:h ${D7}:h`},{rh:'D5:q. G5:e D5:q B4:e C5:e',lh:`${G}:h. r:q`},
+    {rh:'D5:q D5:q C5:e A4:q.',lh:`${G}:h ${D7}:h`}];
+  const B=[{rh:'E5:q C5:q E5:q C5:q',lh:`${C}:h ${C}:h`},{rh:'B4:q. C5:e B4:q G5:e F#5:e',lh:`${G}:h. r:q`},
+    {rh:'E5:q C5:q E5:e G5:q.',lh:`${C}:h ${C}:h`}];
+  return buildXML("The Marines' Hymn",1,[{rh:'r:h. G4:e B4:e',lh:'r:w'},...A,{rh:'G4:h. G4:e B4:e',lh:G3q},...A,
+    {rh:'G4:h. G5:e F#5:e',lh:G3q},...B,{rh:'D5:h. G4:e B4:e',lh:G3q},...A,{rh:'G4:h. r:q',lh:G3q}]);},
+// p119 key of F; repeat written out
+brownjug:()=>{const F='F2+C3',Bb='Bb2+D3',e='Bb4+E5',d='Bb4+D5',desc='C3:q Bb2:q A2:q G2:q';
+  const s1=[{rh:'A4:q C5:q A4+C5:q. C5:e',lh:`${F}:w`},{rh:'Bb4:q D5:q Bb4+D5:q. D5:e',lh:`${Bb}:w`},
+    {rh:`${e}:q ${e}:q ${d}:q ${e}:q`,lh:desc},{rh:'A4+F5:q Bb4+G5:q C5+A5:h',lh:`F2:q r:q ${F}:h`},
+    {rh:'A4:q C5:q A4+C5:q. C5:e',lh:`${F}:w`},{rh:'Bb4:q D5:q Bb4+D5:q. D5:e',lh:`${Bb}:w`},
+    {rh:`${e}:q ${e}:q ${d}:q ${e}:q`,lh:desc},{rh:'Bb4+G5:q A4+F5:q A4+F5:q. r:e',lh:`F2:q r:q ${F}:q. r:e`}];
+  const s2=[{rh:'A5:q F5:q C5:h',lh:`${F}:w`},{rh:'Bb4:q D5:q Bb4+D5:h',lh:`${Bb}:w`},
+    {rh:`${e}:e ${e}:e ${e}:q ${d}:q ${e}:q`,lh:desc},{rh:'A4+F5:q Bb4+G5:q C5+A5:h',lh:`F2:q r:q ${F}:h`},
+    {rh:'A5:q F5:q C5:h',lh:`${F}:w`},{rh:'Bb4:q D5:q Bb4+D5:h',lh:`${Bb}:w`},
+    {rh:`${e}:e ${e}:e ${e}:q ${d}:q ${e}:q`,lh:desc}];
+  return buildXML('Little Brown Jug',-1,[{rh:'r:h. r:e C5:e',lh:'r:w'},...s1,...s2,
+    {rh:'Bb4+G5:q A4+F5:q A4+F5:q. C5:e',lh:`F2:q r:q ${F}:q. r:e`},...s1,...s2,
+    {rh:'Bb4+G5:q A4+F5:q A4+F5:q. r:e',lh:`F2:q r:q ${F}:q. r:e`}]);},
+// p123 key of F, 1-beat pickup
+auldlang:()=>{const F='F3+A3+C4',C7='C3+Bb3+C4',Bb='F3+Bb3+D4',C7b='E3+Bb3+C4';return buildXML('Auld Lang Syne',-1,[
+  {rh:'r:h. C4:q',lh:'r:w'},
+  {rh:'F4:q. F4:e F4:q A4:q',lh:`${F}:w`},{rh:'G4:q. F4:e G4:q A4:q',lh:`${C7}:w`},
+  {rh:'F4:q. F4:e A4:q C5:q',lh:`${F}:h F3:q A3:q`},{rh:'D5:h. D5:q',lh:`${Bb}:h. r:q`},
+  {rh:'C5:q. A4:e A4:q F4:q',lh:`${F}:w`},{rh:'G4:q. F4:e G4:q A4:e G4:e',lh:`${C7}:h. r:q`},
+  {rh:'D4+F4:q. D4:e D4:q C4:q',lh:'F3+Bb3:h E3+Bb3:h'},{rh:'F4:h. D5:q',lh:`${F}:h. r:q`},
+  {rh:'C5:q. A4:e A4:q F4:q',lh:`${F}:h ${F}:h`},{rh:'G4:q. F4:e G4:q D5:q',lh:`${C7b}:h ${C7b}:h`},
+  {rh:'C5:q. A4:e A4:q C5:q',lh:`${F}:h F3:q A3:q`},{rh:'D5:h. D5:q',lh:`${Bb}:h. r:q`},
+  {rh:'C5:q. A4:e A4:q F4:q',lh:`${F}:w`},{rh:'G4:q. F4:e G4:q A4:e G4:e',lh:`${C7}:w`},
+  {rh:'D4+F4:q. D4:e D4:q C4:q',lh:'F3+Bb3:h E3+Bb3:h'},{rh:'F4:h. r:q',lh:`${F}:q C3:q F2:q r:q`}]);},
+// pp124-125 di Capua, key of F; repeat with 1st/2nd endings written out
+solemio:()=>{const f='F3:q. A3+C4:e A3+C4:q A3+C4:q',F1='F3+A3+C4:q r:q r:h',c='E3:q. Bb3+C4:e Bb3+C4:q Bb3+C4:q',C1='E3+Bb3+C4:q r:q r:h';
+  const A=[{rh:'A4+C5:h A4+C5:h~',lh:f},{rh:'_A4+C5:q C5+E5:q C5+E5:q Bb4+D5:q',lh:F1},
+    {rh:'G4+Bb4:w~',lh:c},{rh:'_G4+Bb4:q C5+E5:q C5+E5:q Bb4+D5:q',lh:C1},
+    {rh:'E4+G4:h E4+G4:h~',lh:c},{rh:'_E4+G4:q C4+E4:q D4+F4:q E4+G4:q',lh:C1},
+    {rh:'A4+C5:w~',lh:f},{rh:'_A4+C5:h. E5:q',lh:f},
+    {rh:'Bb4+Db5:w~',lh:'F3:q. Bb3+Db4:e Bb3+Db4:q Bb3+Db4:q'},{rh:'_Bb4+Db5:q Bb4:q Db5+F5:q. Bb4+Db5:e',lh:'F3+Bb3+Db4:w'},
+    {rh:'A4+C5:h A4+C5:h~',lh:f},{rh:'_A4+C5:q A4:q G4:q F4:q',lh:F1}];
+  return buildXML('O Sole Mio!',-1,[{rh:'A4+C5+F5:q A4+C5+F5:q A4+E5:q r:q',lh:'r:w'},...A,
+    {rh:'C5:w~',lh:c},{rh:'_C5:q A4:q G4:q. F4:e',lh:C1},{rh:'F4:w~',lh:f},{rh:'_F4:q r:q r:h',lh:F1},...A,
+    {rh:'C5:w~',lh:c},{rh:'_C5:q C5:q Bb4+G5:q. F5:e',lh:'E3:q Bb3+C4:q E3+Bb3+C4:q. r:e'},
+    {rh:'A4+C5+F5:w~',lh:'F3:q. A3+C4:e A3+C4:q C3:q'},{rh:'_A4+C5+F5:q r:q r:h',lh:'F2:q r:q r:h'}]);},
+// p127 A minor; repeat with endings written out
+jericho:()=>{const ce='C4+E4',bd='B3+D4',A5='A2+E3',run='A2:q E3:e F3:e E3:e D3:e C3:e B2:e',sc='A3:e G#3:e A3:e B3:e C4:e B3:e C4:e D4:e';
+  const A=[{rh:sc,lh:`${A5}:w`},{rh:`${ce}:e ${ce}:e r:e ${ce}:e~ _${ce}:h`,lh:`${A5}:w`},
+    {rh:`${bd}:e ${bd}:e r:e ${bd}:e~ _${bd}:h`,lh:'E2+E3:w'},{rh:`${ce}:e ${ce}:e r:e ${ce}:e~ _${ce}:e D4:e C4:e B3:e`,lh:`${A5}:h. r:q`},
+    {rh:sc,lh:`${A5}:w`},{rh:`${ce}:e ${ce}:e r:e ${ce}:e~ _${ce}:q C4:e D4:e`,lh:`${A5}:h. r:q`}];
+  return buildXML('Jericho',0,[...A,{rh:'E4:q D4:q C4:q B3:q',lh:'r:q E2:q F#2:q G#2:q'},{rh:'A3:h. r:q',lh:run},...A,
+    {rh:'E4:h D4:h',lh:'r:q E2:q r:q E2:q'},{rh:'C4:h B3:h',lh:'r:q F#2:q r:q G#2:q'},{rh:'A3:w~',lh:run},
+    {rh:'_A3:q E4:q C4+A4:q r:q',lh:'A2:q E3:q A2:q r:q'}]);},
+// pp130-131 A minor, 3/4, 1-beat pickup
+greensleeves:()=>{const Am='E3+A3+C4',G='D3+G3+B3',E='E3+G#3+B3',C='G3+C4+E4';
+  const M=(rh,lh)=>({rh,lh});
+  const pair=(r1,r2,c,end)=>[M(r1,`${c}:h.~`),M(r2,end||`_${c}:h.`)];
+  const ending=[M('C5:q. B4:e A4:q',`${Am}:h.`),M('G#4:q. F#4:e G#4:q',`${E}:h.`),M('E4+A4:h.','A3+C4:h.'),M('E4+A4:h.','A3+C4:h.')];
+  return buildXML('Greensleeves',0,[M('r:h A4:q','r:h.'),
+    ...pair('C5:h D5:q','E5:q. F#5:e E5:q',Am),...pair('D5:h B4:q','G4:q. A4:e B4:q',G),
+    ...pair('C5:h A4:q','A4:q. G#4:e A4:q',Am),...pair('B4:h G#4:q','E4:h A4:q',E,`_${E}:h r:q`),
+    ...pair('C5:h D5:q','E5:q. F#5:e E5:q',Am),...pair('D5:h B4:q','G4:q. A4:e B4:q',G),...ending,
+    ...pair('G5:h.','G5:q. F#5:e E5:q',C),...pair('D5:h B4:q','G4:q. A4:e B4:q',G),
+    ...pair('C5:h A4:q','A4:q. G#4:e A4:q',Am),...pair('B4:h G#4:q','E4:h r:q',E,`_${E}:h r:q`),
+    ...pair('G5:h.','G5:q. F#5:e E5:q',C),...pair('D5:h B4:q','G4:q. A4:e B4:q',G),...ending],3);},
+// p133 A minor, 1-beat pickup
+godownmoses:()=>{const Am='A3+C4+E4',X='B3+D4+E4',E7='G#3+D4+E4';
+  const v=[{rh:'C5:q C5:q B4:q B4:q',lh:`${Am}:h ${X}:h`},{rh:'C5:q C5:q A4:h',lh:`${Am}:h ${X}:h`},
+    {rh:'E4:q E4:q G#4:q G#4:q',lh:'E3:q D3:q C3:q B2:q'}];
+  return buildXML('Go Down, Moses',0,[{rh:'r:h. E4:q',lh:'r:w'},...v,{rh:'C4+A4:h. E4:q',lh:'A2+E3:h. r:q'},
+    ...v,{rh:'C4+A4:h. r:q',lh:'A2+E3:h. r:q'},
+    {rh:'A4:q A4:h.',lh:`${Am}:q ${Am}:h.`},{rh:'D5:q D5:h.',lh:'F3+A3+D4:q F3+A3+D4:h.'},
+    {rh:'E5:h E5:q. D5:e',lh:`${Am}:h ${E7}:h`},{rh:'E5:q D5:q C5:e A4:q.',lh:`${E7}:h ${Am}:h`},
+    {rh:'C5:q A4:h.',lh:`${Am}:w`},{rh:'C5:q A4:h.',lh:'F3+A3+C4:w'},
+    {rh:'E4:q E4:q G#4:q G#4:q',lh:'E3:q D3:q C3:q B2:q'},{rh:'C4+A4:h. r:q',lh:'A2+E3:h. r:q'}]);},
+// p135 D minor, 3/4; 2nd time 8va
+scarborough:()=>{const d='D3:q F3:q A3:q',c='C3:q E3:q G3:q';const a=[
+  {rh:'D4:h D4:q',lh:d},{rh:'A4:h A4:q',lh:d},{rh:'E4:q. F4:e E4:q',lh:c},{rh:'D4:h.~',lh:d},
+  {rh:'_D4:q A4:q C5:q',lh:d},{rh:'D5:h C5:q',lh:d},{rh:'A4:q B4:q G4:q',lh:'D3:q G3:q B3:q'},{rh:'A4:h.~',lh:d},
+  {rh:'_A4:h D5:q',lh:d},{rh:'D5:h D5:q',lh:d},{rh:'C5:h A4:q',lh:'C3:q F3:q A3:q'},{rh:'A4:q G4:q F4:q',lh:'F3:q E3:q D3:q'},
+  {rh:'E4:h.~',lh:c},{rh:'_E4:h.',lh:c},{rh:'D4:h A4:q',lh:d},{rh:'G4:h F4:q',lh:c},{rh:'E4:q D4:q C4:q',lh:c},
+  {rh:'D4:h.~',lh:d},{rh:'_D4:h.',lh:d}];
+  return buildXML('Scarborough Fair',-1,[{rh:'r:h.',lh:d},{rh:'r:h.',lh:d},...a,...a.map(m=>({rh:up8(m.rh),lh:m.lh})),
+    {rh:'F5+D6:h.~',lh:d},{rh:'_F5+D6:h.',lh:'D3:h.'}],3);},
+// pp136-137 D minor, 3/4, 2-beat pickup
+raisins:()=>{const d='D3:q F3:q A3:q',g='D3:q G3:q Bb3:q',a='C#3:q G3:q A3:q';return buildXML('Raisins and Almonds',-1,[
+  {rh:'r:q D4:q F4:q',lh:'r:h.'},
+  {rh:'A4:q A4:q A4:q',lh:d},{rh:'A4:q. G4:e F4:e G4:e',lh:d},{rh:'A4:h.~',lh:d},{rh:'_A4:q D4:q F4:q',lh:d},
+  {rh:'A4:q A4:q A4:q',lh:d},{rh:'A4:q. G4:e F4:e G4:e',lh:d},{rh:'A4:h.~',lh:d},{rh:'_A4:h A4:q',lh:d},
+  {rh:'E4:h F4:q',lh:a},{rh:'G4:q F4:q E4:q',lh:a},{rh:'F4:q D4:h~',lh:d},{rh:'_D4:h.',lh:d},
+  {rh:'Bb4:h Bb4:q',lh:g},{rh:'Bb4:q C#5:q D5:q',lh:g},{rh:'A4:h.~',lh:d},{rh:'_A4:h.',lh:d},
+  {rh:'E4:h F4:q',lh:a},{rh:'G4:q F4:q E4:q',lh:a},{rh:'F4:q D4:h~',lh:d},{rh:'_D4:h.',lh:d},
+  {rh:'A4:h A4:q',lh:a},{rh:'G4+C#5:q Bb4:q A4:q',lh:a},{rh:'F4+D5:h.~',lh:d},{rh:'_F4+D5:h.',lh:d},
+  {rh:'A5:h A5:q',lh:a},{rh:'G5+C#6:q Bb5:q A5:q',lh:a},{rh:'F5+D6:h.~',lh:d},{rh:'_F5+D6:q r:h',lh:'D4:q r:h'}],3);},
+// pp138-139 G -> C -> F major (written with accidentals, no key signature)
+wholeworld:()=>{const x4=c=>`${c}:q ${c}:q ${c}:q ${c}:q`,syn=(a,b,c)=>`${a}:e ${b}:q ${a}:e~ _${a}:e ${a}:e ${a}:e ${c}:e`;
+  const G='G2+B2+D3',D7='A2+C3+D3',C='C3+E3+G3',G7='B2+F3+G3',F='F3+A3+C4',C7='E3+Bb3+C4',Bb='F3+Bb3+D4';
+  return buildXML("He's Got the Whole World in His Hands",0,[
+  {rh:'r:h r:e D5:e D5:e B4:e',lh:'r:w'},
+  {rh:'D5:h B4:e G4:e~ _G4:q',lh:x4(G)},{rh:syn('D5','E5','B4'),lh:x4(G)},
+  {rh:'C5:q C5:q A4:e F#4:e~ _F#4:q',lh:x4(D7)},{rh:syn('D5','E5','B4'),lh:x4(D7)},
+  {rh:'D5:h B4:e G4:e~ _G4:q',lh:x4(G)},{rh:syn('D5','E5','B4'),lh:x4(G)},
+  {rh:'D5:q D5:q C5:e A4:e~ _A4:q',lh:x4(D7)},{rh:'G4:h r:e G4:e G4:e E4:e',lh:`${G}:e G2+C3+E3:q ${G}:e r:e r:e r:q`},
+  {rh:'G4:h E4:e C4:e~ _C4:q',lh:x4(C)},{rh:syn('G4','A4','E4'),lh:x4(C)},
+  {rh:'F4:q F4:q D4:e B3:e~ _B3:q',lh:x4(G7)},{rh:syn('G4','A4','E4'),lh:x4(G7)},
+  {rh:'G4:h E4:e C4:e~ _C4:q',lh:x4(C)},{rh:syn('G4','A4','E4'),lh:x4(C)},
+  {rh:'G4:q G4:q F4:e D4:e~ _D4:q',lh:x4(G7)},{rh:'C4:h r:e C5:e C5:e A4:e',lh:`${C}:e C3+F3+A3:q ${C}:e r:e r:e r:q`},
+  {rh:'C5:h A4:e F4:e~ _F4:q',lh:x4(F)},{rh:syn('C5','D5','A4'),lh:x4(F)},
+  {rh:'Bb4:q Bb4:q G4:e E4:e~ _E4:q',lh:x4(C7)},{rh:syn('C5','D5','A4'),lh:x4(C7)},
+  {rh:'C5:h A4:e F4:e~ _F4:q',lh:x4(F)},{rh:syn('C5','D5','A4'),lh:x4(F)},
+  {rh:'C5:q C5:q D5:e E5:e~ _E5:q',lh:x4(C7)},{rh:'A4+F5:h Bb4+F5:h',lh:`${F}:h ${Bb}:h`},{rh:'A4+F5:h r:h',lh:`${F}:h r:h`}]);},
+// pp140-141 Joplin; repeat with 1st/2nd endings written out
+entertainer:()=>{const C='C3+E3+G3',G7='G2+F3+G3',lA='C3:q E3+G3:q C3:q E3+Bb3:q',lB='C3:q F3+A3:q E3+G3:q r:q';
+  const th='E4:e C5:q E4:e C5:q E4:e C5:e~',run='E5:e C5:e D5:e E5:e~ _E5:e B4:e D5:q';
+  const body=[{rh:th,lh:lA},{rh:'_C5:h C5:e C5:e D5:e D#5:e',lh:lB},{rh:run,lh:`${C}:q r:q ${G7}:q r:q`},
+    {rh:'C5:h. D4:e D#4:e',lh:'C3:q E3+G3:q E3+G3:q r:q'},{rh:th,lh:lA},{rh:'_C5:h. A4:e G4:e',lh:lB},
+    {rh:'F#4:e A4:e C5:e E5:e~ _E5:e D5:e C5:e A4:e',lh:'D3:q F#3+A3:q D3:q F3+A3:q'},
+    {rh:'F4+D5:h. D4:e D#4:e',lh:'G3:q G2:q A2:q B2:q'},{rh:th,lh:lA},{rh:'_C5:h C5:e C5:e D5:e D#5:e',lh:lB},
+    {rh:run,lh:`${C}:q r:q ${G7}:q r:q`},{rh:'C5:h. C5:e D5:e',lh:'C3:q E3+G3:q E3+G3:q r:q'},
+    {rh:'E5:e C5:e D5:e E5:e~ _E5:e C5:e D5:e C5:e',lh:'C4:h Bb3+C4:h'},{rh:'E5:e C5:e D5:e E5:e~ _E5:e C5:e D5:e C5:e',lh:'A3+C4:h Ab3+C4:h'},
+    {rh:run,lh:`G3+C4:q r:q ${G7}:q r:q`}];
+  return buildXML('The Entertainer',0,[
+    {rh:'D6:e E6:e C6:e A5:e~ _A5:e B5:e G5:q',lh:'r:w'},{rh:'D5:e E5:e C5:e A4:e~ _A4:e B4:e G4:q',lh:'r:w'},
+    {rh:'D4:e E4:e C4:e A3:e~ _A3:e B3:e r:q',lh:'r:h r:q A3:e Ab3:e'},{rh:'r:h B3+F4+G4:q D4:e D#4:e',lh:'G3:q r:q G2:q r:q'},
+    ...body,{rh:'C5:h. D4:e D#4:e',lh:`${C}:q G2:q A2:q B2:q`},...body,{rh:'C5:h. r:q',lh:`${C}:q G2:q C2:q r:q`}]);},
+// pp142-143 eighth-note triplets (:t); last 4 bars repeat, 2nd time RH 8vb
+amazinggrace:()=>{const C='C3:q E3+G3:q r:q',C7='C3:q E3+Bb3:q r:q',F='F3:q A3+C4:q r:q',D='D3:q F#3+C4:q r:q',G='G3:q B3+D4:q E3:t D3:t B2:t',
+  G7='G2:q F3+B3:q r:q',Am='A2:q C3+E3:q r:q',G7b='G2:q D3+F3:q r:q';
+  const tail=[{rh:'A4+C5:h E5+G5:t D5:t C5:t',lh:Am},{rh:'E5+G5:h D5:t E5:t D5:t',lh:G7b},{rh:'C5+E5:h.~',lh:'C3:q E3+G3:q A3:t G3:t E3:t'}];
+  const dn=a=>a.map(m=>({rh:dn8(m.rh),lh:m.lh}));
+  return buildXML('Amazing Grace',0,[{rh:'r:h G4:e A4:e',lh:'r:h.'},
+  {rh:'E4+C5:h E5:t D5:t C5:t',lh:C},{rh:'G4+E5:h D5:t E5:t D5:t',lh:C7},{rh:'A4+C5:h A4:t C5:t A4:t',lh:F},
+  {rh:'E4+G4:h G4:t A4:t G4:t',lh:C},{rh:'E4+C5:h E5:t D5:t C5:t',lh:C},{rh:'F#4+E5:h D5:t E5:t F#5:t',lh:D},
+  {rh:'B4+G5:h.~',lh:G},{rh:'_B4+G5:h D5:t E5:t F5:t',lh:G7},{rh:'E5+G5:h E5:t G5:t E5:t',lh:C},
+  {rh:'C5:h D5:t C5:t Bb4:t',lh:C7},{rh:'F4+A4:q. F4:e A4:t C5:t A4:t',lh:F},
+  {rh:'E4+G4:h G4:t A4:t G4:t',lh:C},{rh:'E4+C5:h E5:t D5:t C5:t',lh:Am},{rh:'G4+E5:h D5:t E5:t D5:t',lh:G7b},
+  {rh:'E4+C5:h A4:t G4:t E4:t',lh:C},{rh:'G4:h G4:t A4:t G4:t',lh:G7b},
+  {rh:'C5+E5:h E5+G5:t D5:t C5:t',lh:C},{rh:'E5+G5:h D5:t E5:t D5:t',lh:C7},{rh:'A4+C5:h A4:t C5:t A4:t',lh:F},
+  {rh:'E4+G4:h G4:t A4:t G4:t',lh:C},{rh:'C5+E5:h E5+G5:t D5:t C5:t',lh:C},{rh:'E5:h D5:t E5:t F#5:t',lh:D},
+  {rh:'B4+G5:h.~',lh:G},{rh:'_B4+G5:h D5:t E5:t F5:t',lh:G7},{rh:'E5+G5:h E5:t G5:t E5:t',lh:C},
+  {rh:'C5:h D5:t C5:t Bb4:t',lh:C7},{rh:'F4+A4:q. F4:e A4:t C5:t A4:t',lh:F},
+  {rh:'E4+G4:h G4:t A4:t G4:t',lh:'C3:q E3+G3:q r:q'},...tail,{rh:'_C5+E5:h G3:t A3:t G3:t',lh:'C3:q E3+G3:q r:q'},
+  ...dn(tail),{rh:'_C4+E4:h r:q',lh:'C3:q E3+G3:q r:q'}],3);},
+// p45 then p47 (the book's suggestion): melody in RH, then in LH
+saintsboth:()=>{const C='C3+E3+G3',G7='B2+F3+G3',F='C3+F3+A3',c='C4+E4+G4',g='B3+F4+G4',f='C4+F4+A4';
+  const rh45=[
+    {rh:'G4:w~',lh:`r:q ${C}:q ${C}:q ${C}:q`},{rh:'_G4:q C4:q E4:q F4:q',lh:`${C}:q r:q r:h`},
+    {rh:'G4:w~',lh:`r:q ${C}:q ${C}:q ${C}:q`},{rh:'_G4:q C4:q E4:q F4:q',lh:`${C}:q r:q r:h`},
+    {rh:'G4:h E4:h',lh:`r:q ${C}:q r:q ${C}:q`},{rh:'C4:h E4:h',lh:`r:q ${C}:q r:q ${C}:q`},
+    {rh:'D4:w~',lh:`r:q ${G7}:q ${G7}:q ${G7}:q`},{rh:'_D4:q r:q E4:q D4:q',lh:`${G7}:q r:q r:h`},
+    {rh:'C4:h C4:h',lh:`r:q ${C}:q r:q ${C}:q`},{rh:'E4:h G4:h',lh:`r:q ${C}:q r:q ${C}:q`},
+    {rh:'G4:q F4:h.~',lh:`r:h ${F}:q ${F}:q`},{rh:'_F4:h E4:q F4:q',lh:`${F}:h r:h`},
+    {rh:'G4:h E4:h',lh:`r:q ${C}:q r:q ${C}:q`},{rh:'D4:h D4:h',lh:`r:q ${G7}:q r:q ${G7}:q`},
+    {rh:'C4:w~',lh:`r:q ${C}:q ${C}:q ${C}:q`}];
+  const lh47=[
+    {rh:`r:q ${c}:q ${c}:q ${c}:q`,lh:'G3:w~'},{rh:`${c}:q r:q r:h`,lh:'_G3:q C3:q E3:q F3:q'},
+    {rh:`r:q ${c}:q ${c}:q ${c}:q`,lh:'G3:w~'},{rh:`${c}:q r:q r:h`,lh:'_G3:q C3:q E3:q F3:q'},
+    {rh:`r:q ${c}:q r:q ${c}:q`,lh:'G3:h E3:h'},{rh:`r:q ${c}:q r:q ${c}:q`,lh:'C3:h E3:h'},
+    {rh:`r:q ${g}:q ${g}:q ${g}:q`,lh:'D3:w~'},{rh:`${g}:q r:q r:h`,lh:'_D3:q r:q E3:q D3:q'},
+    {rh:`r:q ${c}:q r:q ${c}:q`,lh:'C3:h C3:h'},{rh:`r:q ${c}:q r:q ${c}:q`,lh:'E3:h G3:h'},
+    {rh:`r:h ${f}:q ${f}:q`,lh:'G3:q F3:h.~'},{rh:`${f}:h r:h`,lh:'_F3:h E3:q F3:q'},
+    {rh:`r:q ${c}:q r:q ${c}:q`,lh:'G3:h E3:h'},{rh:`r:q ${g}:q r:q ${g}:q`,lh:'D3:h D3:h'},
+    {rh:`r:q ${c}:q ${c}:q ${c}:q`,lh:'C3:w~'}];
+  return buildXML('When the Saints – RH then LH melody',0,[{rh:'r:q C4:q E4:q F4:q',lh:'r:w'},...rh45,
+    {rh:'_C4:q r:q r:h',lh:`${C}:q C3:q E3:q F3:q`},...lh47,{rh:`${c}:q r:q r:h`,lh:'_C3:q r:q r:h'}]);},
   ode:()=>buildXML('Ode to Joy',0,[
     {rh:'E4:q E4:q F4:q G4:q',lh:'C3:w'},{rh:'G4:q F4:q E4:q D4:q',lh:'G2:w'},
     {rh:'C4:q C4:q D4:q E4:q',lh:'C3:w'},{rh:'E4:q. D4:e D4:h',lh:'G2:h G2:h'},
@@ -448,6 +820,7 @@ function layoutScore(sc){
       return {t,w:Math.min(90,Math.max(38,30+16*gap))+(acc?10:0)};
     });
     m.width=m.cols.reduce((s,c)=>s+c.w,0)+30;
+    const pm=sc.measures[mi-1];m.tchg=!!pm&&(m.beats+'/'+m.beatType)!==(pm.beats+'/'+pm.beatType);if(m.tchg)m.width+=24;
   });
   // systems
   const systems=[];let prevTime=null,row=null;
@@ -510,6 +883,7 @@ function renderScore(){
       const m=sc.measures[mi];const mw=m.width*s.scale;
       const nm=el('text',{x:x+3,y:s.tb-46,'font-size':12,fill:'#94a3b8'},svg);nm.textContent=mi+1;m.nmEl=nm;
       m.x0=x;m.x1=x+mw;let cx=x+12*s.scale;
+      if(m.tchg&&k>0){[s.tb,s.bb].forEach(bb=>{const a=el('text',{x:x+14,y:bb-22,'font-size':22,'font-weight':700,'text-anchor':'middle',fill:'#2b2620','font-family':'serif'},svg);a.textContent=m.beats;const b=el('text',{x:x+14,y:bb-2,'font-size':22,'font-weight':700,'text-anchor':'middle',fill:'#2b2620','font-family':'serif'},svg);b.textContent=m.beatType;});cx+=24*s.scale;}
       m.cols.forEach(c=>{c.x=cx+ (c.w*s.scale)/2-4;cx+=c.w*s.scale;});
       m.cols.forEach(c=>drawColumn(svg,s,sc,mi,c,placed));
       x+=mw;
